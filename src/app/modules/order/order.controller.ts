@@ -1,0 +1,47 @@
+import { Request, Response, NextFunction } from 'express';
+import { OrderServices } from './order.service';
+import catchAsync from '../../../shared/catchAsync';
+import sendResponse from '../../../shared/sendResponse';
+import { StatusCodes } from 'http-status-codes';
+
+const createOrder = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  const payload = req.body;
+  const result = await OrderServices.createOrderToDb(user!, payload);
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Order created successfully',
+    data: result,
+  });
+});
+
+const getAllOrders = catchAsync(async (req: Request, res: Response) => {
+  const result = await OrderServices.getOrdersFromDB(req.user, req.query);
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Order data retrieved successfully',
+    data: result.orders,
+    pagination: result.pagination,
+  });
+});
+
+const changeOrderStatus = catchAsync(async (req: Request, res: Response) => {
+  const result = await OrderServices.changeOrderStatus(
+    req.params.id,
+    req.body.status,
+  );
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Order status updated successfully',
+    data: result,
+  });
+});
+
+export const OrderController = {
+  createOrder,
+  getAllOrders,
+  changeOrderStatus,
+};
