@@ -8,7 +8,7 @@ import {
 } from '../types/emailTamplate';
 
 const getLogoUrl = () => {
-  return 'https://res.cloudinary.com/dknmebeee/image/upload/v1785305810/logo-hubology_1x_tnmfnk.png';
+  return 'https://res.cloudinary.com/dknmebeee/image/upload/v1787648884/ifundayiti-logo_pxyeoe.png';
 };
 
 export const membershipSubscriptionUserConfirmation = (
@@ -23,15 +23,15 @@ export const membershipSubscriptionUserConfirmation = (
     to: values.email,
     subject: `Membership Subscribed: ${values.membershipName}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #bba15c;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
@@ -42,7 +42,7 @@ export const membershipSubscriptionUserConfirmation = (
                   ${statusLabel}
                 </span>
               </div>
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
                 Welcome to ${values.membershipName}!
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
@@ -57,26 +57,26 @@ export const membershipSubscriptionUserConfirmation = (
               </p>
               
               <!-- Details Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="6" style="font-size: 14px; color: #4b5563;">
                   <tr>
-                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #f3f4f6;">Membership Plan:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">${values.membershipName}</td>
+                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #eef1f8;">Membership Plan:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">${values.membershipName}</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Billing Cycle:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6; text-transform: capitalize;">${values.recurring}ly</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Billing Cycle:</td>
+                    <td style="border-bottom: 1px solid #eef1f8; text-transform: capitalize;">${values.recurring}ly</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Price:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">$${values.price.toFixed(2)} / ${values.recurring}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Price:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">$${values.price.toFixed(2)} / ${values.recurring}</td>
                   </tr>
                   ${
                     values.isTrial
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Trial Status:</td>
-                    <td style="color: #1e40af; font-weight: bold; border-bottom: 1px solid #f3f4f6;">${values.trialPeriodDays}-Day Free Trial ${values.trialEndDate ? `(Ends ${values.trialEndDate})` : ''}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Trial Status:</td>
+                    <td style="color: #1e40af; font-weight: bold; border-bottom: 1px solid #eef1f8;">${values.trialPeriodDays}-Day Free Trial ${values.trialEndDate ? `(Ends ${values.trialEndDate})` : ''}</td>
                   </tr>
                   `
                       : ''
@@ -85,8 +85,8 @@ export const membershipSubscriptionUserConfirmation = (
                     values.startDate
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Start Date:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6;">${values.startDate}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Start Date:</td>
+                    <td style="border-bottom: 1px solid #eef1f8;">${values.startDate}</td>
                   </tr>
                   `
                       : ''
@@ -95,15 +95,15 @@ export const membershipSubscriptionUserConfirmation = (
                     values.endDate
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">${values.isTrial ? 'Trial End Date' : 'Subscription End Date'}:</td>
-                    <td style="font-weight: bold; color: ${values.isTrial ? '#1e40af' : '#173616'}; border-bottom: 1px solid #f3f4f6;">${values.endDate}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">${values.isTrial ? 'Trial End Date' : 'Subscription End Date'}:</td>
+                    <td style="font-weight: bold; color: ${values.isTrial ? '#1e40af' : '#0033A0'}; border-bottom: 1px solid #eef1f8;">${values.endDate}</td>
                   </tr>
                   `
                       : ''
                   }
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Auto Renew:</td>
-                    <td style="font-weight: bold; color: ${values.autoRenew !== false ? '#166534' : '#b45309'}; border-bottom: 1px solid #f3f4f6;">${values.autoRenew !== false ? 'Enabled (Auto-charge)' : 'Disabled (Expires at end of cycle)'}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Auto Renew:</td>
+                    <td style="font-weight: bold; color: ${values.autoRenew !== false ? '#166534' : '#b45309'}; border-bottom: 1px solid #eef1f8;">${values.autoRenew !== false ? 'Enabled (Auto-charge)' : 'Disabled (Expires at end of cycle)'}</td>
                   </tr>
                   ${
                     values.transactionId
@@ -131,21 +131,25 @@ export const membershipSubscriptionUserConfirmation = (
               `
                   : ''
               }
+
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
               
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 10px 0; line-height: 1.5;">
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; line-height: 1.5;">
                 This is an automated subscription confirmation email.
               </p>
               <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>
@@ -167,21 +171,21 @@ export const adminMembershipNotification = (
     to: values.adminEmail,
     subject: `New Subscription: ${values.membershipName}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #bba15c;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
           <tr>
             <td style="padding: 40px 40px 30px 40px;">
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
                 New Membership Subscription
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
@@ -192,26 +196,26 @@ export const adminMembershipNotification = (
               </p>
               
               <!-- Details Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="6" style="font-size: 14px; color: #4b5563;">
                   <tr>
-                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #f3f4f6;">Customer:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6;">${values.customerName} (${values.customerEmail})</td>
+                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #eef1f8;">Customer:</td>
+                    <td style="border-bottom: 1px solid #eef1f8;">${values.customerName} (${values.customerEmail})</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Plan:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">${values.membershipName}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Plan:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">${values.membershipName}</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Price:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">$${values.price.toFixed(2)} / ${values.recurring}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Price:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">$${values.price.toFixed(2)} / ${values.recurring}</td>
                   </tr>
                   ${
                     values.isTrial
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Trial Status:</td>
-                    <td style="color: #1e40af; font-weight: bold; border-bottom: 1px solid #f3f4f6;">${values.trialPeriodDays}-Day Free Trial ${values.trialEndDate ? `(Ends ${values.trialEndDate})` : ''}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Trial Status:</td>
+                    <td style="color: #1e40af; font-weight: bold; border-bottom: 1px solid #eef1f8;">${values.trialPeriodDays}-Day Free Trial ${values.trialEndDate ? `(Ends ${values.trialEndDate})` : ''}</td>
                   </tr>
                   `
                       : ''
@@ -220,8 +224,8 @@ export const adminMembershipNotification = (
                     values.startDate
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Start Date:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6;">${values.startDate}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Start Date:</td>
+                    <td style="border-bottom: 1px solid #eef1f8;">${values.startDate}</td>
                   </tr>
                   `
                       : ''
@@ -230,15 +234,15 @@ export const adminMembershipNotification = (
                     values.endDate
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">${values.isTrial ? 'Trial End Date' : 'Subscription End Date'}:</td>
-                    <td style="font-weight: bold; color: ${values.isTrial ? '#1e40af' : '#173616'}; border-bottom: 1px solid #f3f4f6;">${values.endDate}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">${values.isTrial ? 'Trial End Date' : 'Subscription End Date'}:</td>
+                    <td style="font-weight: bold; color: ${values.isTrial ? '#1e40af' : '#0033A0'}; border-bottom: 1px solid #eef1f8;">${values.endDate}</td>
                   </tr>
                   `
                       : ''
                   }
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Auto Renew:</td>
-                    <td style="font-weight: bold; color: ${values.autoRenew !== false ? '#166534' : '#b45309'}; border-bottom: 1px solid #f3f4f6;">${values.autoRenew !== false ? 'Enabled (Auto-charge)' : 'Disabled (Expires at end of cycle)'}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Auto Renew:</td>
+                    <td style="font-weight: bold; color: ${values.autoRenew !== false ? '#166534' : '#b45309'}; border-bottom: 1px solid #eef1f8;">${values.autoRenew !== false ? 'Enabled (Auto-charge)' : 'Disabled (Expires at end of cycle)'}</td>
                   </tr>
                   ${
                     values.transactionId
@@ -252,16 +256,20 @@ export const adminMembershipNotification = (
                   }
                 </table>
               </div>
+
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
               
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology System</strong>
+                <strong style="color: #0033A0;">IFundAyiti System Notification</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
               <p style="font-size: 12px; color: #9ca3af; margin: 0;">
                 This is an automated administrative subscription notification.
               </p>
@@ -285,14 +293,14 @@ export const subscriptionPaymentSuccess = (
     to: values.email,
     subject: `Subscription Payment Received: ${values.membershipName}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #bba15c;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <tr>
@@ -302,7 +310,7 @@ export const subscriptionPaymentSuccess = (
                   Payment Successful ✓
                 </span>
               </div>
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
                 Payment Receipt for ${values.membershipName}
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
@@ -312,22 +320,22 @@ export const subscriptionPaymentSuccess = (
                 We have successfully received your recurring membership payment for <strong>${values.membershipName}</strong>. Your subscription is active and up to date!
               </p>
               
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="6" style="font-size: 14px; color: #4b5563;">
                   <tr>
-                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #f3f4f6;">Plan:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">${values.membershipName}</td>
+                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #eef1f8;">Plan:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">${values.membershipName}</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Amount Paid:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">$${values.amountPaid.toFixed(2)}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Amount Paid:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">$${values.amountPaid.toFixed(2)}</td>
                   </tr>
                   ${
                     values.nextBillingDate
                       ? `
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Next Billing Date:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6;">${values.nextBillingDate}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Next Billing Date:</td>
+                    <td style="border-bottom: 1px solid #eef1f8;">${values.nextBillingDate}</td>
                   </tr>
                   `
                       : ''
@@ -344,17 +352,21 @@ export const subscriptionPaymentSuccess = (
                   }
                 </table>
               </div>
+
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
               
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>
@@ -376,14 +388,14 @@ export const subscriptionPaymentFailed = (
     to: values.email,
     subject: `Payment Failed: ${values.membershipName}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #dc2626;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <tr>
@@ -410,17 +422,21 @@ export const subscriptionPaymentFailed = (
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 24px 0;">
                 Please log in to your account and update your payment method to avoid any interruption to your membership services.
               </p>
+
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
               
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>
@@ -441,14 +457,14 @@ export const subscriptionCancelled = (values: ISubscriptionCancelled) => {
     to: values.email,
     subject: `Subscription Canceled: ${values.membershipName}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #f59e0b;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <tr>
@@ -458,7 +474,7 @@ export const subscriptionCancelled = (values: ISubscriptionCancelled) => {
                   ${isImmediate ? 'Subscription Canceled' : 'Auto-Renew Canceled'}
                 </span>
               </div>
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
                 Subscription Cancellation Notice
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
@@ -472,15 +488,15 @@ export const subscriptionCancelled = (values: ISubscriptionCancelled) => {
                 }
               </p>
               
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="6" style="font-size: 14px; color: #4b5563;">
                   <tr>
-                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #f3f4f6;">Membership Plan:</td>
-                    <td style="font-weight: bold; color: #173616; border-bottom: 1px solid #f3f4f6;">${values.membershipName}</td>
+                    <td style="font-weight: bold; width: 40%; border-bottom: 1px solid #eef1f8;">Membership Plan:</td>
+                    <td style="font-weight: bold; color: #0033A0; border-bottom: 1px solid #eef1f8;">${values.membershipName}</td>
                   </tr>
                   <tr>
-                    <td style="font-weight: bold; border-bottom: 1px solid #f3f4f6;">Cancellation Type:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6;">${isImmediate ? 'Immediate Revocation' : 'Cancel at Period End'}</td>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Cancellation Type:</td>
+                    <td style="border-bottom: 1px solid #eef1f8;">${isImmediate ? 'Immediate Revocation' : 'Cancel at Period End'}</td>
                   </tr>
                   ${
                     values.endDate && !isImmediate
@@ -494,17 +510,21 @@ export const subscriptionCancelled = (values: ISubscriptionCancelled) => {
                   }
                 </table>
               </div>
+
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
               
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>

@@ -2,6 +2,7 @@ import stripe from '../../../../config/stripe';
 import { Donation } from './donation.model';
 import { IDonation } from './donation.interface';
 import QueryBuilder from '../../../builder/QueryBuilder';
+import config from '../../../../config';
 
 const createDonationToDB = async (payload: IDonation, hostUrl: string) => {
   const { name, email, amount } = payload;
@@ -21,8 +22,8 @@ const createDonationToDB = async (payload: IDonation, hostUrl: string) => {
       },
     ],
     mode: 'payment',
-    success_url: `${hostUrl}/donation/webhook?status=success`,
-    cancel_url: `${hostUrl}/donation/webhook?status=failed`,
+    success_url: `${config.frontend_url}/payment/success?type=donation`,
+    cancel_url: `${config.frontend_url}/payment/failed?type=donation`,
     customer_email: email,
     metadata: {
       paymentType: 'donation',
@@ -32,40 +33,46 @@ const createDonationToDB = async (payload: IDonation, hostUrl: string) => {
     },
   });
 
-
   return { paymentUrl: session.url };
 };
 
 const getAllDonationsFromDB = async (query: Record<string, any>) => {
-  const qb = new QueryBuilder(Donation.find().populate({
-    path: "applicant",
-    select: "personal applicationPeriod",
-    populate: {
-      path: "applicationPeriod",
-      select: "title startDate endDate"
-    }
-  }), query).search(['name', 'email', 'transactionId', "applicant.name"]).filter().sort().paginate().fields()
+  const qb = new QueryBuilder(
+    Donation.find().populate({
+      path: 'applicant',
+      select: 'personal applicationPeriod',
+      populate: {
+        path: 'applicationPeriod',
+        select: 'title startDate endDate',
+      },
+    }),
+    query,
+  )
+    .search(['name', 'email', 'transactionId', 'applicant.name'])
+    .filter()
+    .sort()
+    .paginate()
+    .fields();
 
   const [transactions, pagination] = await Promise.all([
     qb.modelQuery.lean(),
-    qb.getPaginationInfo()
-  ])
+    qb.getPaginationInfo(),
+  ]);
 
-  return { transactions, pagination }
+  return { transactions, pagination };
 };
 
 const updateStatusToDB = async (status: string, res: any) => {
-
-
-  if (status === "success") {
-
-    res.redirect(`https://hubology-frontend.vercel.app/ifundayiti/payment-success`);
+  if (status === 'success') {
+    res.redirect(
+      `https://hubology-frontend.vercel.app/ifundayiti/payment-success`,
+    );
+  } else if (status === 'failed') {
+    res.redirect(
+      `https://hubology-frontend.vercel.app/ifundayiti/payment-cancel`,
+    );
   }
-
-  else if (status === "failed") {
-    res.redirect(`https://hubology-frontend.vercel.app/ifundayiti/payment-cancel`);
-  }
-}
+};
 
 const getFundStatsFromDB = async () => {
   const stats = await Donation.aggregate([
@@ -106,5 +113,5 @@ export const DonationServices = {
   createDonationToDB,
   getAllDonationsFromDB,
   updateStatusToDB,
-  getFundStatsFromDB
+  getFundStatsFromDB,
 };

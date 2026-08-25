@@ -6,13 +6,7 @@ import {
 } from '../types/emailTamplate';
 
 const getLogoUrl = () => {
-  const host =
-    config.ip_address === '0.0.0.0' ? 'localhost' : config.ip_address;
-  const base =
-    host && (host.startsWith('http://') || host.startsWith('https://'))
-      ? host
-      : `http://${host}`;
-  return 'https://res.cloudinary.com/dknmebeee/image/upload/v1785305810/logo-hubology_1x_tnmfnk.png';
+  return 'https://res.cloudinary.com/dknmebeee/image/upload/v1787648884/ifundayiti-logo_pxyeoe.png';
 };
 
 export const vendorStatusUpdate = (values: IVendorStatusUpdate) => {
@@ -48,21 +42,21 @@ export const vendorStatusUpdate = (values: IVendorStatusUpdate) => {
     to: values.email,
     subject: `Vendor Account Status Updated: ${statusUpper}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #bba15c;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
           <tr>
             <td style="padding: 40px 40px 30px 40px;">
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
                 Vendor Account Status Update
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
@@ -73,7 +67,7 @@ export const vendorStatusUpdate = (values: IVendorStatusUpdate) => {
               </p>
               
               <!-- Status Badge Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 24px;">
                 <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin: 0 0 10px 0;">New Status</p>
                 <span style="display: inline-block; padding: 8px 24px; font-size: 18px; font-weight: bold; border-radius: 50px; ${statusBadgeStyle}">
                   ${statusUpper}
@@ -81,21 +75,25 @@ export const vendorStatusUpdate = (values: IVendorStatusUpdate) => {
               </div>
 
               ${messageDetailHtml}
+
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
               
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 10px 0; line-height: 1.5;">
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; line-height: 1.5;">
                 This is an automated administrative email. Please do not reply directly to this email.
               </p>
               <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>
@@ -112,17 +110,17 @@ export const vendorCredentials = (values: IVendorCredentials) => {
   const logoUrl = getLogoUrl();
   return {
     to: values.email,
-    subject: 'Your Hubology Vendor Account Credentials',
+    subject: 'Your IFundAyiti Vendor Account Credentials',
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #bba15c;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
@@ -133,29 +131,29 @@ export const vendorCredentials = (values: IVendorCredentials) => {
                   Vendor Account Created ✓
                 </span>
               </div>
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
-                Welcome to Hubology Vendor Portal
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+                Welcome to IFundAyiti Vendor Portal
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
                 Dear <strong>${values.name}</strong>,
               </p>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 24px 0;">
-                An administrator has created a Vendor account for you on Hubology. Here are your login credentials:
+                An administrator has created a Vendor account for you on IFundAyiti. Here are your login credentials:
               </p>
               
               <!-- Credentials Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 20px; margin-bottom: 24px;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="8" style="font-size: 14px; color: #4b5563;">
                   <tr>
-                    <td style="font-weight: bold; width: 35%; border-bottom: 1px solid #f3f4f6;">Email:</td>
-                    <td style="border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #173616;">${values.email}</td>
+                    <td style="font-weight: bold; width: 35%; border-bottom: 1px solid #eef1f8;">Email:</td>
+                    <td style="border-bottom: 1px solid #eef1f8; font-weight: 600; color: #0033A0;">${values.email}</td>
                   </tr>
                   ${
                     values.password
                       ? `
                   <tr>
                     <td style="font-weight: bold;">Password:</td>
-                    <td style="font-family: monospace; font-size: 15px; font-weight: 600; color: #0D1026;">${values.password}</td>
+                    <td style="font-family: monospace; font-size: 15px; font-weight: 600; color: #0033A0;">${values.password}</td>
                   </tr>
                   `
                       : ''
@@ -165,33 +163,37 @@ export const vendorCredentials = (values: IVendorCredentials) => {
 
               <!-- Login Button CTA -->
               <div style="text-align: center; margin: 28px 0 16px 0;">
-                <a href="${config.frontend_url}/login" style="background-color: #0D1026; color: #ffffff; border-bottom: 3px solid #bba15c; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-block;">
+                <a href="${config.frontend_url}/login" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); color: #ffffff; border-bottom: 3px solid #E4002B; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-block;">
                   Log In to Vendor Portal
                 </a>
               </div>
               <p style="font-size: 13px; text-align: center; color: #6b7280; margin: 0 0 24px 0;">
                 Or copy and paste this link into your browser: <br />
-                <a href="${config.frontend_url}/login" style="color: #173616; word-break: break-all;">${config.frontend_url}/login</a>
+                <a href="${config.frontend_url}/login" style="color: #0033A0; word-break: break-all;">${config.frontend_url}/login</a>
               </p>
 
               <p style="font-size: 14px; line-height: 1.5; color: #6b7280; margin: 20px 0 0 0;">
                 Please log in to your vendor dashboard and change your password after your initial sign in.
               </p>
 
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
+
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 10px 0; line-height: 1.5;">
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; line-height: 1.5;">
                 This is an automated vendor account creation email. Please do not reply directly to this email.
               </p>
               <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>
@@ -221,21 +223,21 @@ export const vendorProfileVisibilityUpdate = (
     to: values.email,
     subject: `Vendor Profile Visibility Updated: ${visibilityText}`,
     html: `
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8;">
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 40px 0; color: #333333; -webkit-font-smoothing: antialiased;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f0f4f8;">
     <tr>
       <td align="center">
-        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin: 30px auto;">
+        <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background-color: #0D1026; padding: 35px 20px; border-bottom: 4px solid #bba15c;">
-              <img src="${logoUrl}" alt="Hubology Logo" style="display: block; width: 180px; height: auto;" />
+            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
           <tr>
             <td style="padding: 40px 40px 30px 40px;">
-              <h1 style="color: #173616; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
+              <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
                 Profile Visibility Update
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
@@ -246,27 +248,31 @@ export const vendorProfileVisibilityUpdate = (
               </p>
               
               <!-- Visibility Status Box -->
-              <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-radius: 8px; padding: 24px; text-align: center; margin-bottom: 24px;">
                 <p style="font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #6b7280; margin: 0 0 10px 0;">Current Directory Visibility</p>
                 <span style="display: inline-block; padding: 8px 24px; font-size: 18px; font-weight: bold; border-radius: 50px; ${badgeStyle}">
                   ${visibilityText}
                 </span>
               </div>
 
-              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 28px 0 0 0;">
+              <!-- Haitian flag accent divider -->
+              <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
+
+              <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 0 0;">
                 Best regards,<br />
-                <strong>The Hubology Team</strong>
+                <strong style="color: #0033A0;">The IFundAyiti Team</strong><br />
+                <span style="font-size: 13px; color: #6b7280; font-style: italic;">Invest. Build. Change Haiti.</span>
               </p>
             </td>
           </tr>
           <!-- Footer -->
           <tr>
-            <td align="center" style="background-color: #f9fafb; padding: 30px 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 10px 0; line-height: 1.5;">
+            <td align="center" style="background-color: #f8faff; padding: 28px 20px; border-top: 1px solid #dce8ff; text-align: center;">
+              <p style="font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; line-height: 1.5;">
                 This is an automated administrative notification. Please do not reply directly to this email.
               </p>
               <p style="font-size: 12px; color: #9ca3af; margin: 0; line-height: 1.5;">
-                &copy; ${new Date().getFullYear()} Hubology. All rights reserved.
+                &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
               </p>
             </td>
           </tr>
