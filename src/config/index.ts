@@ -41,4 +41,7 @@ export default {
   elasticSearch: {
     url: process.env.ELASTICSEARCH_URL,
   },
+  support: {
+    admin: process.env.ADMIN_SUPPORT,
+  },
 };

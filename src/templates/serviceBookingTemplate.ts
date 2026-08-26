@@ -24,7 +24,7 @@ export const serviceBookingUserConfirmation = (
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+            <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
               <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
@@ -176,7 +176,7 @@ export const serviceBookingAdminNotification = (
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, #0033A0 0%, #001f6b 100%); padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+            <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
               <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
             </td>
           </tr>

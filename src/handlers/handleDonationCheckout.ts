@@ -78,7 +78,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
 
         // Send donation notification to admin
         try {
-          const adminEmail = config.super_admin.email;
+          const adminEmail = config.support.admin;
           if (adminEmail) {
             const adminEmailData = emailTemplate.donationReceived({
               adminEmail: adminEmail,
