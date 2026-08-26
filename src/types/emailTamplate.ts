@@ -9,6 +9,12 @@ export type IResetPassword = {
   otp: number;
 };
 
+export type IApplicationSubmissionConfirmation = {
+  email: string;
+  name: string;
+  projectName: string;
+};
+
 export type IApplicationStatusUpdate = {
   email: string;
   name: string;

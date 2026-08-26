@@ -3,7 +3,7 @@ import {
   resetPassword,
   welcomeAccount,
 } from '../templates/authTemplate';
-import { applicationStatusUpdate } from '../templates/applicationTemplate';
+import { applicationStatusUpdate, applicationSubmissionConfirmation } from '../templates/applicationTemplate';
 import {
   donationReceipt,
   donationReceived,
@@ -39,6 +39,7 @@ export const emailTemplate = {
   resetPassword,
   welcomeAccount,
   applicationStatusUpdate,
+  applicationSubmissionConfirmation,
   donationReceipt,
   donationReceived,
   orderConfirmation,

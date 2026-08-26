@@ -33,7 +33,7 @@ const fileUploadHandler = (customFile: FileUpload[] = []) => {
     },
     {
       name: 'doc',
-      type: ['application/pdf',],
+      type: ['application/pdf'],
       maxCount: 3,
     },
   ];
@@ -41,11 +41,18 @@ const fileUploadHandler = (customFile: FileUpload[] = []) => {
   // merge custom config
   if (customFile.length) {
     for (const el of customFile) {
-      fileTypeArray.push({
+      const existingIndex = fileTypeArray.findIndex(f => f.name === el.name);
+      const newConfig = {
         name: el.name,
         type: el.type?.length ? el.type : ['*'],
         maxCount: el.maxCount ?? 3,
-      });
+      };
+
+      if (existingIndex !== -1) {
+        fileTypeArray[existingIndex] = newConfig;
+      } else {
+        fileTypeArray.push(newConfig);
+      }
     }
   }
 
@@ -62,14 +69,12 @@ const fileUploadHandler = (customFile: FileUpload[] = []) => {
 
   const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-      const config = fileTypeArray.find(
-        f => f.name === file.fieldname
-      );
+      const config = fileTypeArray.find(f => f.name === file.fieldname);
 
       if (!config) {
         return cb(
           new ApiError(StatusCodes.BAD_REQUEST, 'Invalid file field'),
-          ''
+          '',
         );
       }
 
@@ -92,15 +97,15 @@ const fileUploadHandler = (customFile: FileUpload[] = []) => {
     },
   });
 
-  const fileFilter = (req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
-    const config = fileTypeArray.find(
-      f => f.name === file.fieldname
-    );
+  const fileFilter = (
+    req: Request,
+    file: Express.Multer.File,
+    cb: FileFilterCallback,
+  ) => {
+    const config = fileTypeArray.find(f => f.name === file.fieldname);
 
     if (!config) {
-      return cb(
-        new ApiError(StatusCodes.BAD_REQUEST, 'Invalid file field')
-      );
+      return cb(new ApiError(StatusCodes.BAD_REQUEST, 'Invalid file field'));
     }
 
     if (config.type.includes('*') || config.type.includes(file.mimetype)) {
@@ -110,8 +115,8 @@ const fileUploadHandler = (customFile: FileUpload[] = []) => {
     cb(
       new ApiError(
         StatusCodes.BAD_REQUEST,
-        `Only supports ${config.type.join(', ')}`
-      )
+        `Only supports ${config.type.join(', ')}. Received: ${file.mimetype}`,
+      ),
     );
   };
 
@@ -122,7 +127,7 @@ const fileUploadHandler = (customFile: FileUpload[] = []) => {
     fileTypeArray.map(f => ({
       name: f.name,
       maxCount: f.maxCount,
-    }))
+    })),
   );
 };
 
