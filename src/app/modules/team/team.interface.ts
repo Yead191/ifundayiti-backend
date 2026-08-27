@@ -14,6 +14,7 @@ export type ITeam = {
   linkedin?: string;
   twitter?: string;
   featured?: boolean;
+  rejectionReason?: string;
 };
 
 export type TeamModel = Model<ITeam>;

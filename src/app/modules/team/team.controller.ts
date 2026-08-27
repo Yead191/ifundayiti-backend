@@ -78,6 +78,7 @@ const updateTeamStatus = catchAsync(async (req: Request, res: Response) => {
   const result = await TeamServices.updateTeamStatusToDB(
     req.params.id,
     req.body.status,
+    req.body.rejectionReason,
   );
   return sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -96,6 +97,15 @@ const deleteTeamMember = catchAsync(async (req: Request, res: Response) => {
     data: result,
   });
 });
+const teamStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await TeamServices.teamStats();
+  return sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Team stats fetched successfully',
+    data: result,
+  });
+});
 
 export const TeamController = {
   applyAsVolunteer,
@@ -105,4 +115,5 @@ export const TeamController = {
   updateTeamMember,
   updateTeamStatus,
   deleteTeamMember,
+  teamStats,
 };

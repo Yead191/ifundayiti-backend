@@ -26,6 +26,7 @@ router
     validateRequest(TeamValidations.applyVolunteerZodSchema),
     TeamController.applyAsVolunteer,
   );
+router.route('/stats').get(TeamController.teamStats);
 router.patch(
   '/change-status/:id',
   auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),

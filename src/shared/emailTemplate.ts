@@ -34,6 +34,12 @@ import {
   subscriptionCancelled,
 } from '../templates/subscriptionTemplate';
 
+import {
+  teamMemberCreated,
+  teamStatusUpdate,
+  volunteerApplicationAdminNotification,
+} from '../templates/teamTemplate';
+
 export const emailTemplate = {
   createAccount,
   resetPassword,
@@ -57,4 +63,7 @@ export const emailTemplate = {
   subscriptionPaymentSuccess,
   subscriptionPaymentFailed,
   subscriptionCancelled,
+  teamMemberCreated,
+  teamStatusUpdate,
+  volunteerApplicationAdminNotification,
 };

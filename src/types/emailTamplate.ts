@@ -223,3 +223,24 @@ export type IVendorProfileVisibilityUpdate = {
   name: string;
   isProfileVisible: boolean;
 };
+
+export type ITeamMemberCreated = {
+  email: string;
+  name: string;
+  category: string;
+};
+
+export type ITeamStatusUpdate = {
+  email: string;
+  name: string;
+  status: string;
+  rejectionReason?: string;
+};
+
+export type IVolunteerApplicationAdminNotification = {
+  adminEmail: string;
+  adminName: string;
+  applicantName: string;
+  applicantEmail: string;
+  location: string;
+};
