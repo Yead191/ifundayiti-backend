@@ -23,7 +23,9 @@ const createApplication = catchAsync(async (req: Request, res: Response) => {
     'supporting_documents',
   );
   const image = getSingleFilePath(req.files, 'image');
+  const projectGallery = getMultipleFilesPath(req.files, 'projectGallery');
   data.personal.image = image;
+  data.projectGallery = projectGallery?.map((url: string) => url);
 
   const documentTypes: any[] = [];
   if (nid_card) documentTypes.push({ type: 'nid_card', url: nid_card });
@@ -53,7 +55,10 @@ const createApplication = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllApplications = catchAsync(async (req: Request, res: Response) => {
-  const result = await ApplicationServices.getAllApplicationsFromDB(req.query);
+  const result = await ApplicationServices.getAllApplicationsFromDB(
+    req.user,
+    req.query,
+  );
   return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
@@ -65,6 +70,7 @@ const getAllApplications = catchAsync(async (req: Request, res: Response) => {
 
 const getSingleApplication = catchAsync(async (req: Request, res: Response) => {
   const result = await ApplicationServices.getSingleApplicationFromDB(
+    req.user,
     req.params.id,
   );
   return sendResponse(res, {

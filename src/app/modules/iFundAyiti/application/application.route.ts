@@ -5,6 +5,7 @@ import validateRequest from '../../../middlewares/validateRequest';
 import { applicationValidation } from './application.validation';
 import auth from '../../../middlewares/auth';
 import { USER_ROLES } from '../../../../enums/user';
+import tempAuth from '../../../middlewares/tempAuth';
 
 const router = express.Router();
 
@@ -14,7 +15,13 @@ router
     fileUploadHandler([
       {
         name: 'image',
-        type: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/octet-stream'],
+        type: [
+          'image/jpeg',
+          'image/png',
+          'image/jpg',
+          'image/webp',
+          'application/octet-stream',
+        ],
         maxCount: 1,
       },
       {
@@ -65,14 +72,22 @@ router
         ],
         maxCount: 5,
       },
+      {
+        name: 'projectGallery',
+        type: [
+          'image/jpeg',
+          'image/png',
+          'image/jpg',
+          'image/webp',
+          'application/octet-stream',
+        ],
+        maxCount: 5,
+      },
     ]),
     validateRequest(applicationValidation.createApplicationZodSchema),
     ApplicationController.createApplication,
   )
-  .get(
-    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    ApplicationController.getAllApplications,
-  );
+  .get(tempAuth(), ApplicationController.getAllApplications);
 
 router.route('/track').get(ApplicationController.trackApplication);
 router
@@ -114,10 +129,7 @@ router
 
 router
   .route('/:id')
-  .get(
-    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    ApplicationController.getSingleApplication,
-  )
+  .get(tempAuth(), ApplicationController.getSingleApplication)
   .patch(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
     validateRequest(applicationValidation.updateApplicationStatusSchema),

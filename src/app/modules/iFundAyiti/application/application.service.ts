@@ -16,6 +16,7 @@ import { emailTemplate } from '../../../../shared/emailTemplate';
 import { ProgramFund } from '../programFund/programFund.model';
 import { Donation } from '../donation/donation.model';
 import { NotificationServices } from '../../notification/notification.service';
+import { USER_ROLES } from '../../../../enums/user';
 
 const createApplicationToDB = async (payload: IApplication) => {
   try {
@@ -92,8 +93,26 @@ const createApplicationToDB = async (payload: IApplication) => {
 };
 
 // get all applications
-const getAllApplicationsFromDB = async (query: Record<string, any>) => {
-  const qb = new QueryBuilder(Application.find(), query)
+const getAllApplicationsFromDB = async (
+  user: JwtPayload,
+  query: Record<string, any>,
+) => {
+  const initQuery = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(
+    user?.role,
+  )
+    ? {}
+    : {
+        status: {
+          $in: [APPLICATION_STATUS.WINNER, APPLICATION_STATUS.FINALIST],
+        },
+      };
+
+  const qb = new QueryBuilder(
+    Application.find(initQuery).select(
+      'personal contact grant status createdAt applicationPeriod projectGallery awardedAmount successStory background quote',
+    ),
+    query,
+  )
     .search(['personal.name', 'contact.email', 'identification.nationalId'])
     .filter()
     .paginate()
@@ -111,13 +130,26 @@ const getAllApplicationsFromDB = async (query: Record<string, any>) => {
 
 // get single application
 
-const getSingleApplicationFromDB = async (id: string) => {
+const getSingleApplicationFromDB = async (user: JwtPayload, id: string) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid application id');
   }
-  const application = await Application.findById(id)
+
+  const isAdmin = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(
+    user?.role,
+  );
+
+  let applicationQuery = Application.findOne({ _id: id })
     .populate('applicationPeriod', 'title startDate endDate')
     .populate('reviewedBy', 'name email role');
+
+  if (!isAdmin) {
+    applicationQuery = applicationQuery.select(
+      'personal contact grant status createdAt applicationPeriod projectGallery awardedAmount successStory background quote',
+    );
+  }
+
+  const application = await applicationQuery.lean();
   if (!application) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Application not found');
   }
@@ -228,7 +260,7 @@ const updateApplicationStatusToDB = async (
 // winner selection
 const winnerSelection = async (
   id: string,
-  payload: { successStory: string; fundedAmount: number },
+  payload: { successStory: string; awardedAmount: number },
   admin: JwtPayload,
 ) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -243,7 +275,7 @@ const winnerSelection = async (
   if (!totalFundAmount || totalFundAmount.amount <= 0) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'No fund available');
   }
-  if (payload.fundedAmount > totalFundAmount.amount) {
+  if (payload.awardedAmount > totalFundAmount.amount) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       'Total fund is not enough for this application',
@@ -267,9 +299,16 @@ const winnerSelection = async (
   if (isWinnerExist) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Winner already exists');
   }
-  //check if fundedAmount is valid
-  if (!payload.fundedAmount || payload.fundedAmount <= 0) {
+  //check if awardedAmount is valid
+  if (!payload.awardedAmount || payload.awardedAmount <= 0) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Funded amount is required');
+  }
+
+  if (payload.awardedAmount > application.grant.requestedAmount) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Awarded amount cannot exceed the requested amount. Applicant requested ${application.grant.requestedAmount} and you are trying to award ${payload.awardedAmount}`,
+    );
   }
   //check if successStory is valid
   if (!payload.successStory || payload.successStory.trim() === '') {
@@ -277,7 +316,7 @@ const winnerSelection = async (
   }
   //update application status to winner
   application.status = 'winner';
-  application.fundedAmount = payload.fundedAmount;
+  application.awardedAmount = payload.awardedAmount;
   application.successStory = payload.successStory;
   application.reviewedBy = admin.id;
   application.reviewedAt = new Date();
@@ -288,7 +327,7 @@ const winnerSelection = async (
     name: admin.name || 'Admin',
     email: admin.email,
     type: 'grant',
-    amount: payload.fundedAmount,
+    amount: payload.awardedAmount,
     applicant: application._id,
   });
 
@@ -301,7 +340,7 @@ const winnerSelection = async (
   await ProgramFund.updateOne(
     {},
     {
-      $inc: { amount: -payload.fundedAmount },
+      $inc: { amount: -payload.awardedAmount },
     },
   );
   await application.save();
@@ -348,6 +387,13 @@ const deleteApplicationFromDB = async (id: string) => {
   }
   if (application.personal.image) {
     unlinkFile(application.personal.image);
+  }
+  if (application.projectGallery) {
+    for (const gallery of application.projectGallery) {
+      if (gallery) {
+        unlinkFile(gallery);
+      }
+    }
   }
   const result = await Application.deleteOne({ _id: id });
   return result;

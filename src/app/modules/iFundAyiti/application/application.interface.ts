@@ -13,7 +13,7 @@ export interface IPersonalInformation {
   dob: Date;
   nationality: string;
   location: string;
-  image: string
+  image: string;
 }
 
 export interface IContactInformation {
@@ -63,8 +63,10 @@ export type IApplication = {
   reviewedAt?: Date;
 
   rejectionReason?: string;
-  successStory?: string
-  fundedAmount?: number
+  successStory?: string;
+  awardedAmount?: number;
+  projectGallery?: string[];
+  quote?: string;
 };
 
 export type ApplicationModel = Model<IApplication>;
