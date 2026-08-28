@@ -1,32 +1,35 @@
-import { USER_ROLES } from '../../../enums/user';
-import { Product } from '../book/book.model';
-
-import { User } from '../user/user.model';
+import { Application } from '../iFundAyiti/application/application.model';
 
 const getDashboardOverview = async () => {
-  const [totalServices, totalUsers, approvedVendors, pendingVendors] =
-    await Promise.all([
-      User.countDocuments({
-        role: USER_ROLES.USER,
-      }),
-      User.countDocuments({
-        role: USER_ROLES.VENDOR,
-        verified: true,
-        status: 'active',
-      }),
-      User.countDocuments({
-        role: USER_ROLES.VENDOR,
-        verified: false,
-        status: 'active',
-      }),
-      Product.countDocuments(),
-    ]);
+  const [
+    totalApplication,
+    submitted,
+    underReview,
+    approved,
+    rejected,
+    finalist,
+    winner,
+    archived,
+  ] = await Promise.all([
+    Application.countDocuments(),
+    Application.countDocuments({ status: 'submitted' }),
+    Application.countDocuments({ status: 'underReview' }),
+    Application.countDocuments({ status: 'approved' }),
+    Application.countDocuments({ status: 'rejected' }),
+    Application.countDocuments({ status: 'finalist' }),
+    Application.countDocuments({ status: 'winner' }),
+    Application.countDocuments({ status: 'archived' }),
+  ]);
 
   return {
-    totalServices,
-    totalUsers,
-    approvedVendors,
-    pendingVendors,
+    totalApplication,
+    submitted,
+    underReview,
+    approved,
+    rejected,
+    finalist,
+    winner,
+    archived,
   };
 };
 

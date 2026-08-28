@@ -157,7 +157,11 @@ const getSingleApplicationFromDB = async (user: JwtPayload, id: string) => {
 };
 
 // track application
-const trackApplicationFromDB = async (email: string, dob: string, periodId?: string) => {
+const trackApplicationFromDB = async (
+  email: string,
+  dob: string,
+  periodId?: string,
+) => {
   if (!email || !dob) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,

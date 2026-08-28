@@ -1,0 +1,142 @@
+================================================================================
+IFUNDAYITI ADMIN DASHBOARD DEVELOPMENT SPECIFICATION & PROMPT
+================================================================================
+
+--------------------------------------------------------------------------------
+1. PROJECT CONCEPT & GOAL
+--------------------------------------------------------------------------------
+IFundAyiti is an independent, non-profit grant-funding and donation platform dedicated to supporting Haitian entrepreneurs, community leaders, and impactful local projects. 
+
+Formerly a sub-module of the "Hubology" platform, IFundAyiti has now been separated into a completely standalone system. The backend is built with Node.js, Express, MongoDB (Mongoose), and TypeScript. 
+
+The primary goal of the Admin Dashboard is to give administrators complete control over:
+1. Grant Cycles (Application Periods): Defining when people can apply and controlling the selection timeline.
+2. Application Review & Evaluation: Managing applicant information, verifying uploaded documentation, shortlisting finalists, selecting winners, and awarding grants.
+3. Financials & Donations: Reviewing received donations, tracking the available grant program fund, and auditing grant payouts.
+4. Team & Volunteer Management: Managing directors, team members, and volunteer applicants.
+
+--------------------------------------------------------------------------------
+2. BACKEND ARCHITECTURE & DATA STRUCTURE
+--------------------------------------------------------------------------------
+The dashboard must integrate with the existing backend endpoints structured around two primary modules:
+
+A. IFUNDAYITI MODULE (src/app/modules/iFundAyiti)
+   - Application Periods (applicationperiod):
+     * Model Schema: title (string), startDate (date), endDate (date), status (string: "Open", "Review", "WinnerSelection", "Closed"), totalApplicationsSubmitted (number).
+     * Route Envelopes:
+       - GET /api/v1/period (Public/Admin: Get all cycles)
+       - GET /api/v1/period/current (Public: Fetch current active period)
+       - POST /api/v1/period (Admin: Create new cycle)
+       - GET /api/v1/period/:id (Admin: Get single cycle details)
+       - PATCH /api/v1/period/:id (Admin: Update cycle details/status)
+       - DELETE /api/v1/period/:id (Admin: Delete cycle)
+       
+   - Grant Applications (application):
+     * Model Schema:
+       - personal: name, dob, nationality, location, image
+       - contact: email, phone
+       - identification: nationalId, passport
+       - grant: projectName, projectDescription, requestedAmount, fundUsage, expectedImpact
+       - background: occupation, financialBackground
+       - documents: Array of { type: string, url: string } (e.g. nid_card, proof_of_address, business_plan, supporting_documents)
+       - projectGallery: Array of strings (urls of images uploaded after winning)
+       - status: "submitted" | "underReview" | "approved" | "rejected" | "finalist" | "winner" | "archived"
+       - reviewedBy: Schema.Types.ObjectId (ref: 'User')
+       - rejectionReason (string), successStory (string), awardedAmount (number), quote (string)
+     * Route Envelopes:
+       - GET /api/v1/application (Admin/Public: Fetch applications list. Normal users only see 'winner' & 'finalist' status. Admins see all)
+       - GET /api/v1/application/:id (Admin/Public: Get single application details. Non-admins get selected public-facing fields)
+       - PATCH /api/v1/application/change-status/:id (Admin: Update application status with custom status rules)
+       - POST /api/v1/application/winner-selection/:id (Admin: Award grant to finalist, specifying awardedAmount, successStory, quote, and upload to projectGallery)
+       - DELETE /api/v1/application/:id (Admin: Delete application)
+
+   - Donations & Program Fund (donation & programFund):
+     * Route Envelopes:
+       - GET /api/v1/donation (Admin: Fetch all donation records)
+       - GET /api/v1/donation/fund-stats (Admin: Get aggregate stats)
+       - GET /api/v1/program-fund (Admin: Get the current total available grant balance)
+
+B. TEAM & VOLUNTEER MODULE (src/app/modules/team)
+   - Team Members & Volunteers (team):
+     * Model Schema: name (string), category (string: "director" | "member" | "volunteer"), location (string), bio (string), image (string), focusAreas (string[]), status (string: "pending" | "active" | "rejected" | "blocked"), email (string), phone (string), linkedin (string), twitter (string), featured (boolean), rejectionReason (string).
+     * Route Envelopes:
+       - GET /api/v1/team (Admin/Public: Fetch team list. Admins see all statuses; public gets only "active")
+       - POST /api/v1/team (Admin: Create team member profile)
+       - PATCH /api/v1/team/:id (Admin: Update profile)
+       - PATCH /api/v1/team/change-status/:id (Admin: Update status to active/rejected/blocked, saving rejectionReason if rejected)
+       - DELETE /api/v1/team/:id (Admin: Delete profile)
+
+--------------------------------------------------------------------------------
+3. DASHBOARD PAGE-BY-PAGE FUNCTIONAL SPECIFICATIONS
+--------------------------------------------------------------------------------
+
+PAGE 1: OVERVIEW & STATISTICS (DASHBOARD HOME)
+- Display primary metric cards:
+  * Total Program Funds Available (from /api/v1/program-fund)
+  * Total Applications Received (all cycles)
+  * Active Volunteers & Team count
+  * Total Raised Donations
+- Display charts:
+  * Monthly donation tracking chart
+  * Monthly application submission chart
+- Real-time Notifications Panel:
+  * Listen to Socket.io events:
+    - `getNotification::[ADMIN_ID]`
+  * Display real-time list of notifications (e.g. "New Application Submitted by [Name]", "New Volunteer Applied").
+  * Clicking a notification redirects to the corresponding details page.
+
+PAGE 2: GRANT CYCLES / PERIODS MANAGEMENT
+- List of all cycles showing: Title, Start Date, End Date, Status, and Total Submissions.
+- Create Grant Cycle Modal/Form:
+  * Date Pickers for Start and End dates.
+  * Inputs for Cycle Title.
+- Edit/Update status controls:
+  * Open, Review, WinnerSelection, Closed.
+- Delete action (with confirmation dialog).
+
+PAGE 3: EVALUATION & APPLICATIONS BOARD
+- Application directory table with options to:
+  * Search by Applicant Name, Project Name, or Email.
+  * Filter by status (submitted, underReview, approved, finalist, winner, etc.).
+  * Filter by Grant Cycle (populated from application periods).
+- Application Review Detail Screen (Detailed Modal or Sub-Page):
+  * Display all sections neatly: Personal, Contact, Identification, Grant Details, Financial Background.
+  * Documents Viewer: Inline links or preview triggers for PDFs and images (National ID, Proof of Address, Business Plan, Supporting Documents).
+  * Status Control Panel:
+    - Actions to update status to "underReview", "approved", or "finalist".
+    - "Reject" Button: Triggers a text area to input `rejectionReason`, which is stored and sent to the applicant via email.
+  * Grant Award Panel (Visible only when status is "finalist"):
+    - Action button "Award Grant (Select Winner)".
+    - Form inputs: `awardedAmount` (validated to ensure it does not exceed the applicant's requested amount or the available program fund balance), `successStory`, `quote` (optional), and Multi-file upload for `projectGallery` images.
+    - Submitting this form calls the `/api/v1/application/winner-selection/:id` endpoint.
+
+PAGE 4: FINANCES & DONATIONS LOGS
+- Live balance widget displaying the active Program Fund.
+- Paginated table of all incoming Donations.
+- Search donations by Donor Name/Email.
+- Distinguish between standard user donations (type: "donation") and administrative grant payouts (type: "grant", linking to the winner applicant's ID).
+
+PAGE 5: TEAM & VOLUNTEER MODERATION
+- Tabbed layout:
+  * Tab A: Core Team (Directors & Members)
+  * Tab B: Volunteer Applications (Category: volunteer)
+- Core Team management:
+  * Action to "Add Team Member" (Name, Category, Location, Bio, Image Upload, Focus Areas, Contact Details, Socials).
+  * Actions to Edit profile or Delete.
+- Volunteer applications management:
+  * List volunteer applications (Category: volunteer, Status: pending).
+  * Expand card to read Bio and Focus Areas.
+  * Actions: "Approve" (changes status to active), "Reject" (prompts for `rejectionReason` and updates status), "Block" (suspends status). All actions automatically dispatch status email notifications to volunteers.
+
+--------------------------------------------------------------------------------
+4. DESIGN AESTHETICS & UX INSTRUCTIONS
+--------------------------------------------------------------------------------
+- UI Styling: Vanilla CSS/Tailwind (according to configuration).
+- Palette: Professional dashboard aesthetic using the IFundAyiti brand colors:
+  * Primary: Navy Blue (#0033A0)
+  * Secondary Accent: Warm Cream (#EDE0CB) & Red (#E4002B)
+  * Neutrals: Sleek slate grays, clean borders, crisp white cards.
+- Layout: Side navigation bar with collapsable groups.
+- Micro-animations: Smooth transitions on button hovers, card load reveals, and status badge colors.
+- Responsiveness: Optimised for admin laptops and tablet review workflows.
+================================================================================

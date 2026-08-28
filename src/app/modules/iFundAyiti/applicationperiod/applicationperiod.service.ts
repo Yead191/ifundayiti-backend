@@ -19,6 +19,53 @@ const determineStatus = (
   }
 };
 
+/**
+ * Validates that a manually-supplied status is consistent with the given date range.
+ * Rules:
+ *   Upcoming        → startDate must be in the future
+ *   Open            → today must be within [startDate, endDate]
+ *   Review / WinnerSelection / Closed → endDate must be in the past
+ */
+const validateStatusAgainstDates = (
+  status: string,
+  startDate: Date,
+  endDate: Date,
+) => {
+  const today = new Date();
+
+  if (status === 'Upcoming' && today >= startDate) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Cannot set status to 'Upcoming' because the start date (${startDate.toDateString()}) has already passed.`,
+    );
+  }
+
+  if (status === 'Open') {
+    if (today < startDate) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Cannot set status to 'Open' because the period hasn't started yet (starts ${startDate.toDateString()}).`,
+      );
+    }
+    if (today > endDate) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Cannot set status to 'Open' because the end date (${endDate.toDateString()}) has already passed.`,
+      );
+    }
+  }
+
+  if (
+    ['Review', 'WinnerSelection', 'Closed'].includes(status) &&
+    today <= endDate
+  ) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Cannot set status to '${status}' because the period has not ended yet (ends ${endDate.toDateString()}).`,
+    );
+  }
+};
+
 const createApplicationPeriodToDB = async (payload: IApplicationperiod) => {
   const startDate = new Date(payload.startDate);
   const endDate = new Date(payload.endDate);
@@ -29,13 +76,26 @@ const createApplicationPeriodToDB = async (payload: IApplicationperiod) => {
       'start date should be before end date',
     );
   }
+
+  // If admin manually supplies a status, validate it against the dates
+  if (payload.status) {
+    validateStatusAgainstDates(payload.status, startDate, endDate);
+  }
+
+  // If admin tries to manually create an 'Open' period, ensure no other is already Open
+  if (payload.status === 'Open') {
+    const alreadyOpen = await Applicationperiod.findOne({ status: 'Open' });
+    if (alreadyOpen) {
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        `Another grant cycle "${alreadyOpen.title}" is already Open. Please close it before creating a new open cycle.`,
+      );
+    }
+  }
+
   const isOverlaping = await Applicationperiod.findOne({
-    startDate: {
-      $lte: endDate,
-    },
-    endDate: {
-      $gte: startDate,
-    },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
   });
   if (isOverlaping) {
     throw new ApiError(
@@ -117,26 +177,43 @@ const updateApplicationPeriodToDB = async (
   if (!period) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Application period not found');
   }
+
   const startDate = new Date(payload.startDate || period.startDate);
   const endDate = new Date(payload.endDate || period.endDate);
+  const today = new Date();
 
+  // 1. Basic date sanity check
   if (startDate >= endDate) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       'End date must be after start date.',
     );
   }
-  console.log(payload, 'update period');
+
+  // 2. If admin manually sets a status, validate it is consistent with the dates
+  if (payload.status) {
+    validateStatusAgainstDates(payload.status, startDate, endDate);
+  }
+
+  // 3. Guard: Cannot set status to 'Open' if another period is already Open
+  if (payload.status === 'Open') {
+    const alreadyOpenPeriod = await Applicationperiod.findOne({
+      _id: { $ne: id },
+      status: 'Open',
+    });
+    if (alreadyOpenPeriod) {
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        `Another grant cycle "${alreadyOpenPeriod.title}" is already Open. Please close it before opening a new cycle.`,
+      );
+    }
+  }
+
+  // 4. Date overlap check (excluding this period itself)
   const isOverlapping = await Applicationperiod.findOne({
-    _id: {
-      $ne: id,
-    },
-    startDate: {
-      $lte: endDate,
-    },
-    endDate: {
-      $gte: startDate,
-    },
+    _id: { $ne: id },
+    startDate: { $lte: endDate },
+    endDate: { $gte: startDate },
   });
 
   if (isOverlapping) {
@@ -146,9 +223,9 @@ const updateApplicationPeriodToDB = async (
     );
   }
 
-  const updatedPayload = {
-    ...payload,
-  };
+  const updatedPayload = { ...payload };
+
+  // 5. Auto-determine status from dates only if status is not being manually set
   if ((payload.startDate || payload.endDate) && !payload.status) {
     updatedPayload.status = determineStatus(startDate, endDate);
   }
