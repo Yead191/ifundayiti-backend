@@ -157,33 +157,32 @@ const getSingleApplicationFromDB = async (user: JwtPayload, id: string) => {
 };
 
 // track application
-const trackApplicationFromDB = async (email: string, dob: string) => {
+const trackApplicationFromDB = async (email: string, dob: string, periodId?: string) => {
   if (!email || !dob) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       'Email and Birthdate is required',
     );
   }
-  const currentPeriod = await Applicationperiod.findOne({
-    status: { $in: ['Open', 'Review'] },
-  });
-  if (!currentPeriod) {
-    throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-      'No application period is currently open or under review.',
-    );
-  }
-  const application = await Application.findOne({
+
+  let query: Record<string, any> = {
     'contact.email': email,
     'personal.dob': new Date(dob),
-    applicationPeriod: currentPeriod._id,
-  })
+  };
+
+  if (periodId) {
+    query.applicationPeriod = periodId;
+  }
+
+  const application = await Application.findOne(query)
+    .sort({ createdAt: -1 })
     .populate('applicationPeriod', 'title startDate endDate')
     .lean();
+
   if (!application) {
     throw new ApiError(
       StatusCodes.NOT_FOUND,
-      'Application not found. Please check your email and birthdate. Or maybe application period is not open or under review.',
+      'Application not found. Please check your email and birthdate.',
     );
   }
   return application;

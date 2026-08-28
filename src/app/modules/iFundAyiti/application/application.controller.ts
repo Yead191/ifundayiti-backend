@@ -86,6 +86,7 @@ const trackApplication = catchAsync(async (req: Request, res: Response) => {
   const result = await ApplicationServices.trackApplicationFromDB(
     req.query.email as string,
     req.query.dob as string,
+    req.query.periodId as string,
   );
   return sendResponse(res, {
     success: true,
