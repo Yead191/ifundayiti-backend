@@ -43,7 +43,7 @@ const updateMemberZodSchema = z.object({
     linkedin: z.string().optional(),
     twitter: z.string().optional(),
     phone: z.string().optional(),
-    featured: z.boolean().optional(),
+    featured: z.coerce.boolean().optional(),
     status: z.enum(['pending', 'active', 'rejected', 'blocked']).optional(),
   }),
 });
