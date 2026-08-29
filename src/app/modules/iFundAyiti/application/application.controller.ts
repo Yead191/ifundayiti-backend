@@ -198,6 +198,21 @@ const deleteApplication = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateWinnerInformation = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await ApplicationServices.updateWinnerInformation(
+      req.params.id,
+      req.body,
+    );
+    return sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: 'Winner information updated successfully',
+      data: result,
+    });
+  },
+);
+
 export const ApplicationController = {
   createApplication,
   getAllApplications,
@@ -211,4 +226,5 @@ export const ApplicationController = {
   getRecentApplications,
   winnerSelection,
   deleteApplication,
+  updateWinnerInformation,
 };

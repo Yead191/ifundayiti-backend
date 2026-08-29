@@ -263,7 +263,7 @@ const updateApplicationStatusToDB = async (
 // winner selection
 const winnerSelection = async (
   id: string,
-  payload: { successStory: string; awardedAmount: number },
+  payload: { successStory: string; awardedAmount: number; quote?: string },
   admin: JwtPayload,
 ) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -285,14 +285,11 @@ const winnerSelection = async (
     );
   }
 
-  //check if application is eligible for winner selection
-  const allowed = STATUS_TRANSITIONS[
-    application.status
-  ] as readonly TApplicationStatus[];
-  if (!allowed.includes('winner')) {
+  // check if application is eligible for winner selection (must be a finalist)
+  if (application.status !== APPLICATION_STATUS.FINALIST) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      `Cannot change status from ${application.status} to "winner"`,
+      `Only finalists can be selected as a winner. Current status is "${application.status}".`,
     );
   }
   const isWinnerExist = await Application.findOne({
@@ -300,7 +297,10 @@ const winnerSelection = async (
     applicationPeriod: application.applicationPeriod,
   });
   if (isWinnerExist) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Winner already exists');
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Winner already exists in this period',
+    );
   }
   //check if awardedAmount is valid
   if (!payload.awardedAmount || payload.awardedAmount <= 0) {
@@ -318,9 +318,12 @@ const winnerSelection = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Success story is required');
   }
   //update application status to winner
-  application.status = 'winner';
+  application.status = APPLICATION_STATUS.WINNER;
   application.awardedAmount = payload.awardedAmount;
   application.successStory = payload.successStory;
+  if (payload.quote) {
+    application.quote = payload.quote;
+  }
   application.reviewedBy = admin.id;
   application.reviewedAt = new Date();
 
@@ -372,6 +375,58 @@ const winnerSelection = async (
   } catch (error) {
     console.error('Failed to send status update email:', error);
   }
+  return application;
+};
+
+// update winner information
+const updateWinnerInformation = async (
+  id: string,
+  payload: { successStory?: string; quote?: string; awardedAmount?: number },
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid application id');
+  }
+  const application = await Application.findById(id);
+  if (!application) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Application not found');
+  }
+  //check if application is winner
+  if (application.status !== APPLICATION_STATUS.WINNER) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Only winner information can be updated. Current status is "${application.status}".`,
+    );
+  }
+  //check if successStory is valid
+  if (!payload.successStory || payload.successStory.trim() === '') {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Success story is required');
+  }
+  //update application information
+  application.successStory = payload.successStory;
+
+  application.quote = payload.quote ?? '';
+
+  if (payload.awardedAmount) {
+    if (payload.awardedAmount > application.grant.requestedAmount) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Awarded amount cannot exceed the requested amount. Applicant requested ${application.grant.requestedAmount} and you are trying to award ${payload.awardedAmount}`,
+      );
+    }
+    const totalFundAmount = await ProgramFund.findOne({});
+    if (!totalFundAmount || totalFundAmount.amount <= 0) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'No fund available');
+    }
+    if (payload.awardedAmount > totalFundAmount.amount) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Total fund is not enough for this application',
+      );
+    }
+
+    application.awardedAmount = payload.awardedAmount;
+  }
+  await application.save();
   return application;
 };
 
@@ -591,4 +646,5 @@ export const ApplicationServices = {
   getRecentApplicationsFromDB,
   winnerSelection,
   deleteApplicationFromDB,
+  updateWinnerInformation,
 };

@@ -126,6 +126,13 @@ router
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
     ApplicationController.winnerSelection,
   );
+router
+  .route('/update-winner/:id')
+  .patch(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    validateRequest(applicationValidation.updateWinnerInformationZodSchema),
+    ApplicationController.updateWinnerInformation,
+  );
 
 router
   .route('/:id')
