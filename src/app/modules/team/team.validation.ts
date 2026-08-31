@@ -15,6 +15,7 @@ const createMemberZodSchema = z.object({
     focusAreas: z.array(z.string()).optional(),
     linkedin: z.string().optional(),
     twitter: z.string().optional(),
+    featured: z.coerce.boolean().optional(),
     phone: z.string({ required_error: 'Phone is required' }),
   }),
 });
