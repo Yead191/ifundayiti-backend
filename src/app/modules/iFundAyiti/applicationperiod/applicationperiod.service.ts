@@ -4,6 +4,7 @@ import { IApplicationperiod } from './applicationperiod.interface';
 import { Applicationperiod } from './applicationperiod.model';
 import QueryBuilder from '../../../builder/QueryBuilder';
 import { Application } from '../application/application.model';
+import { syncApplicationPeriodStatuses } from './applicationperiod.constants';
 
 const determineStatus = (
   startDate: Date,
@@ -114,6 +115,7 @@ const createApplicationPeriodToDB = async (payload: IApplicationperiod) => {
 };
 
 const getAllApplicationPeriodFromDB = async (query: Record<string, any>) => {
+  await syncApplicationPeriodStatuses();
   const qb = new QueryBuilder(Applicationperiod.find(), query)
     .search(['title'])
     .filter()
@@ -163,10 +165,15 @@ const getSingleApplicationPeriodFromDB = async (id: string) => {
 
 //get current application by today time
 const getCurrentApplicationPeriodFromDB = async () => {
-  const today = new Date();
-  return await Applicationperiod.findOne({
+  await syncApplicationPeriodStatuses();
+
+  const currentPeriod = await Applicationperiod.findOne({
     status: 'Open',
+    startDate: { $lte: new Date() },
+    endDate: { $gte: new Date() },
   });
+
+  return currentPeriod;
 };
 
 const updateApplicationPeriodToDB = async (
