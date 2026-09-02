@@ -43,25 +43,15 @@ export interface IDocument {
 }
 export type IApplication = {
   applicationPeriod: Types.ObjectId;
-
   personal: IPersonalInformation;
-
   contact: IContactInformation;
-
   identification: IIdentificationInformation;
-
   grant: IGrantInformation;
-
   background: IBackgroundInformation;
-
   documents: IDocument[];
-
   status: TApplicationStatus;
-
   reviewedBy?: Types.ObjectId;
-
   reviewedAt?: Date;
-
   rejectionReason?: string;
   successStory?: string;
   awardedAmount?: number;

@@ -3,6 +3,7 @@ export type TeamMemberCategory = 'director' | 'member' | 'volunteer';
 export type TeamStatus = 'pending' | 'active' | 'rejected' | 'blocked';
 export type ITeam = {
   name: string;
+  title?: string;
   category: TeamMemberCategory;
   location: string;
   bio: string;

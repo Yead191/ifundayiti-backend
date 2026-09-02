@@ -1,4 +1,8 @@
-import { ITeamMemberCreated, ITeamStatusUpdate, IVolunteerApplicationAdminNotification } from '../types/emailTamplate';
+import {
+  ITeamMemberCreated,
+  ITeamStatusUpdate,
+  IVolunteerApplicationAdminNotification,
+} from '../types/emailTamplate';
 
 const getLogoUrl = () => {
   return 'https://res.cloudinary.com/dknmebeee/image/upload/v1787648884/ifundayiti-logo_pxyeoe.png';
@@ -120,7 +124,9 @@ export const teamStatusUpdate = (values: ITeamStatusUpdate) => {
   };
 };
 
-export const volunteerApplicationAdminNotification = (values: IVolunteerApplicationAdminNotification) => {
+export const volunteerApplicationAdminNotification = (
+  values: IVolunteerApplicationAdminNotification,
+) => {
   const logoUrl = getLogoUrl();
   return {
     to: values.adminEmail,

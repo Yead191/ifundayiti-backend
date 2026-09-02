@@ -98,7 +98,7 @@ const getAllTeamMembersFromDB = async (
     : { status: 'active' };
 
   const qb = new QueryBuilder(Team.find(initQuery), query)
-    .search(['name email category'])
+    .search(['name', 'title', 'email', 'category', 'location'])
     .filter()
     .sort()
     .paginate();

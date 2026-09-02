@@ -3,6 +3,7 @@ import { z } from 'zod';
 const createMemberZodSchema = z.object({
   body: z.object({
     name: z.string({ required_error: 'Name is required' }),
+    title: z.string().optional(),
     email: z.string({ required_error: 'Email is required' }),
     category: z.enum(['director', 'member', 'volunteer'], {
       required_error: 'Category is required',
@@ -23,6 +24,7 @@ const createMemberZodSchema = z.object({
 const applyVolunteerZodSchema = z.object({
   body: z.object({
     name: z.string({ required_error: 'Name is required' }),
+    title: z.string().optional(),
     email: z.string({ required_error: 'Email is required' }),
     phone: z.string({ required_error: 'Phone is required' }),
     location: z.string({ required_error: 'Location is required' }),
@@ -36,6 +38,7 @@ const applyVolunteerZodSchema = z.object({
 const updateMemberZodSchema = z.object({
   body: z.object({
     name: z.string().optional(),
+    title: z.string().optional(),
     email: z.string().optional(),
     category: z.enum(['director', 'member', 'volunteer']).optional(),
     location: z.string().optional(),

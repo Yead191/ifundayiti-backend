@@ -26,7 +26,8 @@ const createDonationToDB = async (payload: IDonation, hostUrl: string) => {
     cancel_url: `${config.frontend_url}/payment/failed?type=donation`,
     customer_email: email,
     metadata: {
-      paymentType: 'donation',
+      paymentType: 'ifundayiti_donation',
+      project: 'ifundayiti',
       name,
       email,
       amount: amount.toString(),
@@ -64,13 +65,9 @@ const getAllDonationsFromDB = async (query: Record<string, any>) => {
 
 const updateStatusToDB = async (status: string, res: any) => {
   if (status === 'success') {
-    res.redirect(
-      `https://hubology-frontend.vercel.app/ifundayiti/payment-success`,
-    );
+    res.redirect(`${config.frontend_url}/payment/success?type=donation`);
   } else if (status === 'failed') {
-    res.redirect(
-      `https://hubology-frontend.vercel.app/ifundayiti/payment-cancel`,
-    );
+    res.redirect(`${config.frontend_url}/payment/failed?type=donation`);
   }
 };
 

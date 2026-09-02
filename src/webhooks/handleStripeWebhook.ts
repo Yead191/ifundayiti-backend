@@ -33,7 +33,11 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
     switch (event.type) {
       case 'checkout.session.completed':
         const session = event.data.object as Stripe.Checkout.Session;
-        if (session.metadata?.paymentType === 'donation') {
+        if (
+          session.metadata?.paymentType === 'ifundayiti_donation' ||
+          (session.metadata?.paymentType === 'donation' &&
+            session.metadata?.project === 'ifundayiti')
+        ) {
           await handleDonationCheckout(session);
         } else if (session.metadata?.orderId) {
           await handleOrderPurchase(session);

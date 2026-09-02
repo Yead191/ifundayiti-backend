@@ -8,6 +8,11 @@ const teamSchema = new Schema<ITeam, TeamModel>(
       required: true,
       trim: true,
     },
+    title: {
+      type: String,
+      trim: true,
+      default: '',
+    },
 
     category: {
       type: String,

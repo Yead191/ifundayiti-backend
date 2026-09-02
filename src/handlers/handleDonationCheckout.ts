@@ -13,8 +13,11 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
     mongoSession.startTransaction();
 
     const metadata = data?.metadata;
+    const isDonation =
+      metadata?.paymentType === 'ifundayiti_donation' ||
+      metadata?.paymentType === 'donation';
 
-    if (metadata?.paymentType === 'donation') {
+    if (isDonation) {
       const name = metadata.name;
       const email = metadata.email;
       const amount = Number(metadata.amount);
@@ -54,7 +57,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
     await mongoSession.commitTransaction();
     mongoSession.endSession();
 
-    if (metadata?.paymentType === 'donation') {
+    if (isDonation && metadata) {
       const name = metadata.name;
       const email = metadata.email;
       const amount = Number(metadata.amount);
