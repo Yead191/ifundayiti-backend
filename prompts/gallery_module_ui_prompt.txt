@@ -1,0 +1,173 @@
+================================================================================
+IFUNDAYITI: COMMUNITY GALLERY & MEDIA DASHBOARD MANAGEMENT SPECIFICATION & PROMPT
+================================================================================
+
+--------------------------------------------------------------------------------
+1. MODULE PURPOSE & ARCHITECTURAL CONTEXT
+--------------------------------------------------------------------------------
+IFundAyiti's "Gallery" module is a visual storytelling hub that documents community
+impact, grant award ceremonies, grassroots fieldwork, educational workshops, local
+entrepreneurs, and volunteering events across Haiti. It serves two distinct
+experiences:
+
+1. ADMIN DASHBOARD: A modern media management console to upload, categorize,
+   curate, spotlight (feature), manage statuses, and publish high-resolution photos.
+2. PUBLIC WEBSITE: A responsive, masonry/grid media showcase and interactive
+   full-screen lightbox where donors, partners, and visitors can witness real
+   moments of community progress and grassroots action.
+
+--------------------------------------------------------------------------------
+2. BACKEND API SPECIFICATION (/gallery)
+--------------------------------------------------------------------------------
+All requests communicate with the Express/Mongoose backend endpoints:
+
+Base Route: /gallery
+
+A. LIST & FILTER GALLERIES:
+   - Endpoint: GET /gallery
+   - Query Parameters:
+     * `page` (number, default: 1)
+     * `limit` (number, default: 12)
+     * `searchTerm` (searches title, description, category, location)
+     * `category` (Community Outreach, Grant Programs, Education, Food & Agriculture,
+       Healthcare, Community Development, Entrepreneurship, Environment, Events,
+       Volunteering, Success Stories, Other)
+     * `status` (Draft | Published | Archived) -> Note: Non-admin public users
+       automatically receive only 'Published' gallery photos.
+     * `featured` (true | false)
+     * `sort` (e.g. -createdAt, -date, title)
+   - Response Structure:
+     {
+       "success": true,
+       "message": "Galleries fetched successfully",
+       "data": [
+         {
+           "_id": "66d1b8c...",
+           "title": "Solar Installation at Saint-Marc Cooperative",
+           "description": "Engineers and local apprentices setting up solar panels...",
+           "image": "/uploads/image-1789421.webp",
+           "category": "Clean Energy",
+           "location": "Saint-Marc, Artibonite",
+           "date": "2026-08-15T00:00:00.000Z",
+           "status": "Published",
+           "featured": true,
+           "createdAt": "2026-09-01T10:00:00.000Z",
+           "updatedAt": "2026-09-01T10:00:00.000Z"
+         }
+       ],
+       "pagination": { "page": 1, "limit": 12, "total": 36, "totalPage": 3 }
+     }
+
+B. GALLERY AGGREGATE STATS:
+   - Endpoint: GET /gallery/stats
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>
+   - Response:
+     {
+       "success": true,
+       "message": "Gallery stats fetched successfully",
+       "data": {
+         "totalItems": 36,
+         "publishedItems": 28,
+         "draftItems": 5,
+         "archivedItems": 3,
+         "featuredItems": 8
+       }
+     }
+
+C. SINGLE GALLERY ITEM:
+   - Endpoint: GET /gallery/:id
+   - Response: Single gallery document.
+
+D. CREATE GALLERY PHOTO:
+   - Endpoint: POST /gallery
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: multipart/form-data
+   - Form-Data Fields:
+     * `image` (File: single photo file - required)
+     * `title` (string, required)
+     * `description` (string, optional)
+     * `category` (string, required - from GALLERY_CATEGORIES)
+     * `location` (string, optional, e.g. "Cap-Haïtien, Nord")
+     * `date` (ISO date string, optional - defaults to current date)
+     * `status` (Draft | Published | Archived - default: Draft)
+     * `featured` (boolean, default: false)
+
+E. UPDATE GALLERY PHOTO:
+   - Endpoint: PATCH /gallery/:id
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: multipart/form-data
+   - Accepts any subset of fields + optional replacement `image` file.
+
+F. QUICK STATUS TRANSITION:
+   - Endpoint: PATCH /gallery/status/:id
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>
+   - Body: { "status": "Published" | "Draft" | "Archived" }
+
+G. TOGGLE FEATURED (SPOTLIGHT):
+   - Endpoint: PATCH /gallery/featured/:id
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>
+   - Toggles boolean `featured: true/false`
+
+H. DELETE GALLERY ITEM:
+   - Endpoint: DELETE /gallery/:id
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>
+   - Deletes document and automatically unlinks the associated image from server disk.
+
+--------------------------------------------------------------------------------
+3. ADMIN DASHBOARD SPECIFICATION (Features & UI)
+--------------------------------------------------------------------------------
+
+A. REDUX API SLICE (`src/redux/features/gallery/galleryApi.ts`)
+   - Tags: `Galleries` with IDs `LIST` and `STATS`.
+   - Endpoints:
+     * `useGetGalleriesQuery({ page, limit, searchTerm, status, category, featured })`
+     * `useGetGalleryStatsQuery()`
+     * `useGetGalleryByIdQuery(id)`
+     * `useCreateGalleryMutation()`
+     * `useUpdateGalleryMutation()`
+     * `useUpdateGalleryStatusMutation()`
+     * `useToggleGalleryFeaturedMutation()`
+     * `useDeleteGalleryMutation()`
+
+B. GALLERY MANAGEMENT PAGE (`src/features/gallery/GalleryPage.tsx`)
+   1. KPI Stat Cards Header:
+      - Total Photos Counter (with Camera/Image icon)
+      - Published Live Photos Counter (with green badge)
+      - Drafts Pending Review Counter (with amber badge)
+      - Featured Spotlight Items (with gold star icon)
+   2. Action & Filter Bar:
+      - Search Input with clear icon and debounce (searches title, location, category)
+      - Category Select Dropdown (with "All Categories" option)
+      - Status Tabs (`All`, `Published`, `Draft`, `Archived`) with dynamic count badges
+      - View Switcher (Masonry Card Grid view vs Detailed Table view)
+      - "+ Add New Photo" Primary Action CTA Button (with Plus icon & brand gradient)
+   3. Visual Card Grid View (Default):
+      - Photo thumbnail with aspect-ratio preservation and hover zoom
+      - Category badge & location pill
+      - Title & date display
+      - Top-right Interactive Featured Spotlight Star toggle (instant click)
+      - Status badge with 1-click status dropdown menu
+      - Quick actions (View High-Res Lightbox, Edit metadata, Delete with Popconfirm)
+   4. Table View:
+      - Columns: Thumbnail, Title & Description, Category, Location, Capture Date,
+        Featured Toggle Switch, Status Tag with dropdown, and Action buttons.
+   5. Pagination Controls:
+      - Ant Design Pagination with page jump and page-size selector.
+
+C. CREATE & EDIT GALLERY MODAL / DRAWER
+   - Multi-field responsive form:
+     1. Drag & Drop Photo Upload Zone:
+        - Instant image preview thumbnail
+        - File size/type validation indicator
+     2. Metadata:
+        - Title (Input, required)
+        - Category (Select dropdown populated with official categories)
+        - Location (Input with MapPin prefix, e.g. "Les Cayes, Sud")
+        - Capture Date (DatePicker with friendly format e.g. "MMM D, YYYY")
+        - Description (TextArea for photo context/story)
+     3. Visibility & Publishing:
+        - Status Radio/Select: Draft vs Published vs Archived
+        - "Feature in Spotlight" Toggle Switch with hint text
+     4. Footer Actions: Cancel & Submit button with loading spinner.
+
+
+
+
