@@ -42,13 +42,13 @@ const projectSchema = new Schema<IProject, ProjectModel>(
 
     founder: {
       type: String,
-      required: true,
       trim: true,
+      default: '',
     },
 
     year: {
       type: Number,
-      required: true,
+      default: () => new Date().getFullYear(),
     },
 
     image: {

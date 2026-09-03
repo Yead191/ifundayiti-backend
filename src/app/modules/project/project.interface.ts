@@ -12,8 +12,8 @@ export type IProject = {
   status: PROJECT_STATUS;
 
   category: (typeof PROJECT_CATEGORIES)[number];
-  founder: string;
-  year: number;
+  founder?: string;
+  year?: number;
   image?: string;
   challenge?: string;
   approach?: string;

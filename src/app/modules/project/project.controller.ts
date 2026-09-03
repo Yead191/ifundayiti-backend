@@ -36,7 +36,8 @@ const getAllProjectsFromDB = catchAsync(async (req: Request, res: Response) => {
     success: true,
     message: 'Projects fetched successfully',
     statusCode: StatusCodes.OK,
-    data: result,
+    data: result.result,
+    pagination: result.pagination,
   });
 });
 
@@ -53,10 +54,16 @@ const getSingleProjectFromDB = catchAsync(
 );
 
 const updateProjectToDB = catchAsync(async (req: Request, res: Response) => {
-  const result = await ProjectServices.updateProjectToDB(
-    req.params.id,
-    req.body,
-  );
+  let data = req.body;
+  const image = getSingleFilePath(req.files, 'image');
+  const gallery = getMultipleFilesPath(req.files, 'gallery');
+  if (image) {
+    data.image = image;
+  }
+  if (gallery && gallery.length > 0) {
+    data.gallery = gallery?.map((url: string) => url);
+  }
+  const result = await ProjectServices.updateProjectToDB(req.params.id, data);
   return sendResponse(res, {
     success: true,
     message: 'Project updated successfully',
@@ -104,6 +111,16 @@ const toggleProjectFeaturedToDB = catchAsync(
   },
 );
 
+const getProjectStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await ProjectServices.getProjectStatsFromDB();
+  return sendResponse(res, {
+    success: true,
+    message: 'Project stats fetched successfully',
+    statusCode: StatusCodes.OK,
+    data: result,
+  });
+});
+
 export const ProjectController = {
   createProjectToDB,
   getAllProjectsFromDB,
@@ -112,4 +129,5 @@ export const ProjectController = {
   deleteProjectFromDB,
   updateProjectStatusToDB,
   toggleProjectFeaturedToDB,
+  getProjectStats,
 };

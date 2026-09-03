@@ -20,6 +20,7 @@ import { DisclaimerRoutes } from '../app/modules/disclaimer/disclaimer.route';
 import { FaqRoutes } from '../app/modules/faq/faq.route';
 import { CouponRoutes } from '../app/modules/coupon/coupon.route';
 import { TeamRoutes } from '../app/modules/team/team.route';
+import { ProjectRoutes } from '../app/modules/project/project.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -104,6 +105,10 @@ const apiRoutes = [
   {
     path: '/team',
     route: TeamRoutes,
+  },
+  {
+    path: '/project',
+    route: ProjectRoutes,
   },
 ];
 

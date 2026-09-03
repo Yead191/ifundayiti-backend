@@ -27,7 +27,7 @@ const getAllProjectsFromDB = async (
   const queryBuilder = new QueryBuilder(
     Project.find(initQuery)
       .populate('applicationPeriod', 'title startDate endDate status')
-      .select('name description category location image grantAmount'),
+      .select('name description category location image grantAmount featured'),
     query,
   )
     .search(['name', 'description', 'location', 'category', 'founder'])
@@ -70,6 +70,20 @@ const updateProjectToDB = async (
 ): Promise<IProject> => {
   if (!Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid project ID');
+  }
+
+  const existingProject = await Project.findById(id);
+  if (!existingProject) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Project not found');
+  }
+
+  // If a new main image is provided, remove the old one
+  if (
+    payload.image &&
+    existingProject.image &&
+    payload.image !== existingProject.image
+  ) {
+    unlinkFile(existingProject.image);
   }
 
   const result = await Project.findByIdAndUpdate(id, payload, {
@@ -153,6 +167,47 @@ const toggleProjectFeaturedToDB = async (id: string): Promise<IProject> => {
   return project;
 };
 
+const getProjectStatsFromDB = async () => {
+  const [stats] = await Project.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalProjects: { $sum: 1 },
+        publishedProjects: {
+          $sum: {
+            $cond: [{ $eq: ['$status', PROJECT_STATUS.PUBLISHED] }, 1, 0],
+          },
+        },
+        draftProjects: {
+          $sum: {
+            $cond: [{ $eq: ['$status', PROJECT_STATUS.DRAFT] }, 1, 0],
+          },
+        },
+        archivedProjects: {
+          $sum: {
+            $cond: [{ $eq: ['$status', PROJECT_STATUS.ARCHIVED] }, 1, 0],
+          },
+        },
+        featuredProjects: {
+          $sum: {
+            $cond: [{ $eq: ['$featured', true] }, 1, 0],
+          },
+        },
+        totalGrantAmount: { $sum: { $ifNull: ['$grantAmount', 0] } },
+      },
+    },
+  ]);
+
+  return {
+    totalProjects: stats?.totalProjects || 0,
+    publishedProjects: stats?.publishedProjects || 0,
+    draftProjects: stats?.draftProjects || 0,
+    archivedProjects: stats?.archivedProjects || 0,
+    featuredProjects: stats?.featuredProjects || 0,
+    totalGrantAmount: stats?.totalGrantAmount || 0,
+  };
+};
+
 export const ProjectServices = {
   createProjectToDB,
   getAllProjectsFromDB,
@@ -161,4 +216,5 @@ export const ProjectServices = {
   toggleProjectFeaturedToDB,
   updateProjectStatusToDB,
   deleteProjectFromDB,
+  getProjectStatsFromDB,
 };

@@ -1,0 +1,196 @@
+================================================================================
+IFUNDAYITI: PROJECT SHOWCASE & DASHBOARD MANAGEMENT SPECIFICATION & PROMPT
+================================================================================
+
+--------------------------------------------------------------------------------
+1. MODULE PURPOSE & ARCHITECTURAL CONTEXT
+--------------------------------------------------------------------------------
+IFundAyiti's "Projects" module showcases funded and supported community initiatives,
+social enterprises, and local development projects in Haiti. It serves two distinct
+user experiences:
+
+1. ADMIN DASHBOARD: A complete management suite to create, edit, publish,
+   spotlight (feature), manage media galleries, and archive projects.
+2. PUBLIC WEBSITE: A high-converting, visually rich directory and detailed story
+   pages where donors, partners, and the community can explore funded projects,
+   their challenges, innovative approaches, and tangible impact metrics.
+
+--------------------------------------------------------------------------------
+2. BACKEND API SPECIFICATION (/project)
+--------------------------------------------------------------------------------
+All requests must communicate with the Express/Mongoose backend endpoints:
+
+Base Route: /project
+
+A. LIST & FILTER PROJECTS:
+   - Endpoint: GET /project
+   - Query Parameters:
+     * `page` (number, default: 1)
+     * `limit` (number, default: 10)
+     * `searchTerm` (searches name, description, location, category, founder)
+     * `category` (Food & Agriculture, Clean Energy, Water & Sanitation, Education,
+       Healthcare, Livelihood, Small Business, Community Development, Environment,
+       Arts & Crafts, Other)
+     * `status` (Draft | Published | Archived) -> Note: Non-admin users automatically
+       receive only 'Published' projects.
+     * `featured` (true | false)
+     * `sort` (e.g. -createdAt, grantAmount, year)
+   - Response Structure:
+     {
+       "success": true,
+       "message": "Projects fetched successfully",
+       "data": [
+         {
+           "_id": "66d1a2b...",
+           "name": "Clean Water for Artibonite",
+           "description": "Solar-powered water purification kiosk...",
+           "location": "Saint-Marc, Artibonite",
+           "grantAmount": 1000,
+           "status": "Published",
+           "category": "Water & Sanitation",
+           "founder": "Jean-Pierre Baptiste",
+           "year": 2026,
+           "image": "/uploads/image-1789.webp",
+           "gallery": ["/uploads/gallery-1.webp", "/uploads/gallery-2.webp"],
+           "applicationPeriod": {
+             "_id": "66d0f...",
+             "title": "Spring 2026 Grant Cycle",
+             "status": "WinnerSelection"
+           },
+           "challenge": "Lack of potable water leading to waterborne illness...",
+           "approach": "Installed a community-managed reverse osmosis filter powered by 4kW solar...",
+           "outcome": "Supplying 2,500 villagers with clean water daily...",
+           "story": "Jean-Pierre started this initiative after seeing his local school struggle...",
+           "featured": true,
+           "createdAt": "2026-09-01T10:00:00.000Z"
+         }
+       ],
+       "pagination": { "page": 1, "limit": 10, "total": 24, "totalPage": 3 }
+     }
+
+B. SINGLE PROJECT DETAILS:
+   - Endpoint: GET /project/:id
+   - Response: Single project document with populated `applicationPeriod`.
+
+C. CREATE PROJECT:
+   - Endpoint: POST /project
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: multipart/form-data
+   - Form-Data Fields:
+     * `name` (string, required)
+     * `description` (string, required)
+     * `location` (string, required)
+     * `category` (string, required)
+     * `grantAmount` (number)
+     * `founder` (string)
+     * `year` (number)
+     * `status` (Draft | Published | Archived)
+     * `applicationPeriod` (ObjectId string) //get applications period from api and show on option or dropdown
+     * `challenge` (string)
+     * `approach` (string)
+     * `outcome` (string)
+     * `story` (string)
+     * `featured` (boolean)
+     * `image` (File: single banner image)
+     * `gallery` (Files: up to 10 photos)
+
+D. UPDATE PROJECT:
+   - Endpoint: PATCH /project/:id
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: multipart/form-data
+   - Accepts any subset of create fields + new `image` or `gallery` uploads.
+
+E. QUICK STATUS TRANSITION:
+   - Endpoint: PATCH /project/status/:id
+   - Body: { "status": "Published" | "Draft" | "Archived" }
+
+F. TOGGLE FEATURED (SPOTLIGHT):
+   - Endpoint: PATCH /project/toggle-featured/:id
+   - Toggles boolean `featured: true/false`
+
+G. DELETE PROJECT:
+   - Endpoint: DELETE /project/:id
+   - Removes project record and unlinks uploaded files on disk.
+
+--------------------------------------------------------------------------------
+3. ADMIN DASHBOARD SPECIFICATION (Features & UI)
+--------------------------------------------------------------------------------
+
+A. PROJECT MANAGEMENT PAGE (/dashboard/projects)
+   1. KPI Stat Cards Header:
+      - Total Projects Counter
+      - Active / Published Count
+      - Total Capital Deployed (Sum of `grantAmount`)
+      - Featured Projects Count
+   2. Action Bar:
+      - Search bar with debounce
+      - Category Filter Dropdown
+      - Status Tabs (All | Published | Draft | Archived)
+      - "Create New Project" Primary CTA Button (with icon)
+   3. Data Table / Grid View:
+      - Columns:
+        * Thumbnail + Project Title + Category Tag
+        * Location & Year
+        * Founder
+        * Grant Amount (formatted with currency badge)
+        * Featured Spotlight (Interactive Star / Switch toggle)
+        * Status Tag (Green for Published, Amber for Draft, Slate for Archived)
+        * Actions Menu (View Details, Edit, Change Status Dropdown, Delete with Popconfirm)
+
+B. CREATE & EDIT PROJECT MODAL / FORM
+   - Multi-section form:
+     1. Basic Info: Name, Category (select from official categories), Location, Founder Name, Year.
+     2. Financial & Cycle: Grant Amount ($), Associated Grant Cycle (dropdown populated from /period).
+     3. Narrative & Impact:
+        - Brief Description
+        - The Challenge (Problem statement)
+        - The Approach (Solution and technology)
+        - The Outcome & Impact (Measurable results)
+        - Founder / Community Story
+     4. Media Uploads:
+        - Main Cover Image dropzone (with thumbnail preview & replacement)
+        - Multi-image Project Gallery upload (supporting drag & drop, preview, and removal)
+     5. Publishing Options: Status select (Draft / Published), Featured toggle switch.
+
+--------------------------------------------------------------------------------
+4. PUBLIC WEBSITE SPECIFICATION (Pages & UX)
+--------------------------------------------------------------------------------
+
+A. PROJECTS DIRECTORY PAGE (/projects)
+   1. Hero Banner:
+      - Headline: "Impact in Action: Funded Projects Across Haiti"
+      - Subheadline: "Discover grassroots initiatives and community champions transforming lives through IFundAyiti grants."
+      - Quick impact counter pills (e.g. 50+ Communities Reached, $150K+ Deployed).
+   2. Featured Projects Carousel / Spotlight Section:
+      - Cards showcasing projects where `featured: true` with prominent imagery, badge tags, and direct story links.
+   3. Interactive Explorer:
+      - Category Filter Pills (Food & Agriculture, Clean Energy, Education, etc.) with smooth active indicator.
+      - Search by project keyword, city, or founder name.
+      - Responsive 3-Column Card Grid:
+        * Image with subtle zoom on hover
+        * Category badge & Year tag
+        * Project Title & Excerpt
+        * Location marker (e.g. "Cap-Haïtien, Nord")
+        * Grant Amount Badge
+        * "Read Impact Story" link with arrow animation
+
+B. PROJECT DETAIL / STORY PAGE (/projects/[id])
+   1. Header / Hero:
+      - Breadcrumb navigation (Home > Projects > [Project Name])
+      - Category badge, Date/Year, Location
+      - Title & Tagline
+      - Key Metrics Bar: Grant Amount, Founder, Grant Cycle, Beneficiaries.
+   2. Story Content Layout (2-Column):
+      - Left / Main Column:
+        * Hero Image with caption
+        * The Challenge (Callout box with alert accent)
+        * The Strategy & Approach (Step-by-step breakdown)
+        * Measurable Impact & Outcomes (Stat counters + highlights)
+        * The Human Story (Founder quote in blockquote styling with avatar)
+        * Photo Gallery Lightbox / Grid
+      - Right Sticky Sidebar:
+        * Project Quick Facts card
+        * Associated Grant Cycle card
+        * "Support Similar Projects" CTA / Donation widget
+        * Share buttons (Twitter, LinkedIn, Facebook, Copy Link)
+   3. Related Projects Footer Section:
+      - "More Projects in [Category]" carousel or 3-card grid.
+
