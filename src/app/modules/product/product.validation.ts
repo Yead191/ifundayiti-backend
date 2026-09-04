@@ -104,23 +104,34 @@ const validateCategory = async (categoryId: Types.ObjectId | string) => {
 };
 
 // Helper validator for pricing consistency
-const validatePrice = (price: number, compareAtPrice?: number) => {
-  if (price < 0) {
+const validatePrice = (
+  price: number | string,
+  compareAtPrice?: number | string,
+) => {
+  const numPrice = Number(price);
+  const numCompareAtPrice =
+    compareAtPrice !== undefined &&
+    compareAtPrice !== null &&
+    compareAtPrice !== ''
+      ? Number(compareAtPrice)
+      : undefined;
+
+  if (isNaN(numPrice) || numPrice < 0) {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
       'Product price cannot be negative.',
     );
   }
 
-  if (compareAtPrice !== undefined && compareAtPrice !== null) {
-    if (compareAtPrice < 0) {
+  if (numCompareAtPrice !== undefined && !isNaN(numCompareAtPrice)) {
+    if (numCompareAtPrice < 0) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Compare-at price cannot be negative.',
       );
     }
 
-    if (compareAtPrice < price) {
+    if (numCompareAtPrice < numPrice) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Compare-at price must be greater than or equal to the selling price.',

@@ -52,6 +52,19 @@ const createProductToDB = async (payload: IProduct) => {
       payload.tags = parseIfString<string[]>(payload.tags);
     }
 
+    if (payload.price !== undefined) {
+      payload.price = Number(payload.price);
+    }
+    if (
+      payload.compareAtPrice !== undefined &&
+      payload.compareAtPrice !== null &&
+      String(payload.compareAtPrice).trim() !== ''
+    ) {
+      payload.compareAtPrice = Number(payload.compareAtPrice);
+    } else {
+      delete payload.compareAtPrice;
+    }
+
     await validateCategory(payload.category);
     validatePrice(payload.price, payload.compareAtPrice);
     validateVariants(payload.variants);
@@ -170,8 +183,11 @@ const updateProductToDB = async (id: string, payload: Partial<IProduct>) => {
     payload.images = parseIfString<string[]>(payload.images);
   }
 
-  if (payload.category) {
-    await validateCategory(payload.category);
+  if (payload.price !== undefined) {
+    payload.price = Number(payload.price);
+  }
+  if (payload.compareAtPrice !== undefined && payload.compareAtPrice !== null && String(payload.compareAtPrice).trim() !== '') {
+    payload.compareAtPrice = Number(payload.compareAtPrice);
   }
 
   if (payload.price !== undefined || payload.compareAtPrice !== undefined) {
