@@ -5,7 +5,6 @@ import { handleDonationCheckout } from '../handlers/handleDonationCheckout';
 import Stripe from 'stripe';
 import { handleOrderPurchase } from '../handlers/handleOrderPurchase';
 import { handleMembershipCheckout } from '../handlers/handleMembershipCheckout';
-import { handleDigitalPurchase } from '../handlers/handleDigitalPurchase';
 import { handleInvoicePaymentSucceeded } from '../handlers/handleInvoicePaymentSucceeded';
 import { handleInvoicePaymentFailed } from '../handlers/handleInvoicePaymentFailed';
 import handleSubscriptionDelete from '../handlers/handleSubscriptionDelete';
@@ -41,8 +40,6 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
           await handleDonationCheckout(session);
         } else if (session.metadata?.orderId) {
           await handleOrderPurchase(session);
-        } else if (session?.metadata?.type === 'digital-shop') {
-          await handleDigitalPurchase(session);
         } else if (session.metadata?.membershipId) {
           await handleMembershipCheckout(session);
         }
