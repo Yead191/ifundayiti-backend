@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import Stripe from 'stripe';
-import { Product } from '../app/modules/book/book.model';
+import { Product } from '../app/modules/product/product.model';
 import { Digital } from '../app/modules/digital/digital.model';
 import { User } from '../app/modules/user/user.model';
 import { Transaction } from '../app/modules/transaction/transaction.model';

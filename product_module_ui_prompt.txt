@@ -1,0 +1,410 @@
+================================================================================
+IFUNDAYITI: APPAREL & CLOTHING MERCHANDISE STORE SPECIFICATION & PROMPT
+================================================================================
+
+--------------------------------------------------------------------------------
+1. ARCHITECTURAL CONTEXT & MODULE OVERVIEW
+--------------------------------------------------------------------------------
+IFundAyiti's official apparel & clothing merchandise store sells high-quality,
+ethically produced garments/clothing and accessories. 100% of store profits directly fund
+community grants, solar power installations, and clean water projects in Haiti.
+
+The platform is powered by two integrated modules:
+1. CLOTHING CATEGORIES (/product-category):
+   - Fast taxonomy (e.g., "Hoodies & Sweatshirts", "T-Shirts & Tops",
+     "Caps & Headwear", "Outerwear & Jackets", "Activewear", "Accessories").
+2. APPAREL PRODUCTS & INVENTORY MATRIX (/product):
+   - Multi-image clothing showcase with dynamic Color + Size variant matrices,
+     real-time stock tracking per SKU, pre-order capabilities with expected
+     dispatch dates for backordered sizes, compare-at discount prices, gender
+     classification (Men, Women, Unisex, Kids), tags, and sales analytics.
+
+--------------------------------------------------------------------------------
+2. BACKEND API SPECIFICATION
+--------------------------------------------------------------------------------
+
+========================================
+A. CLOTHING CATEGORIES (/product-category)
+========================================
+
+1. LIST CATEGORIES:
+   - Endpoint: GET /product-category
+   - Query: `searchTerm`, `status` (active | inactive), `page`, `limit`
+   - Note: Non-admin public users automatically receive only 'active' categories.
+   - Example Response:
+     {
+       "success": true,
+       "message": "Product categories retrieved successfully!",
+       "data": [
+         {
+           "_id": "66d2c101...",
+           "name": "Hoodies & Sweatshirts",
+           "status": "active",
+           "createdAt": "2026-09-01T10:00:00.000Z"
+         },
+         {
+           "_id": "66d2c102...",
+           "name": "T-Shirts & Graphic Tees",
+           "status": "active",
+           "createdAt": "2026-09-01T10:00:00.000Z"
+         },
+         {
+           "_id": "66d2c103...",
+           "name": "Caps & Headwear",
+           "status": "active",
+           "createdAt": "2026-09-01T10:00:00.000Z"
+         },
+         {
+           "_id": "66d2c104...",
+           "name": "Outerwear & Windbreakers",
+           "status": "active",
+           "createdAt": "2026-09-01T10:00:00.000Z"
+         }
+       ],
+       "pagination": { "page": 1, "limit": 10, "total": 4, "totalPage": 1 }
+     }
+
+2. CREATE CATEGORY:
+   - Endpoint: POST /product-category
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: application/json
+   - Body:
+     {
+       "name": "Hoodies & Sweatshirts",
+       "status": "active"
+     }
+
+3. GET SINGLE CATEGORY:
+   - Endpoint: GET /product-category/:id
+
+4. UPDATE CATEGORY:
+   - Endpoint: PATCH /product-category/:id
+   - Body: { "name": "Heavyweight Hoodies", "status": "active" }
+
+5. DELETE CATEGORY:
+   - Endpoint: DELETE /product-category/:id
+   - Note: System automatically rejects deletion if active products are assigned to this category.
+
+========================================
+B. APPAREL PRODUCTS & INVENTORY (/product)
+========================================
+
+1. LIST APPAREL PRODUCTS:
+   - Endpoint: GET /product
+   - Query Parameters:
+     * `page` (number, default: 1)
+     * `limit` (number, default: 12)
+     * `searchTerm` (searches name, description, tags)
+     * `category` (ObjectId string)
+     * `gender` (men | women | unisex | kids)
+     * `status` (draft | active | inactive | archived) -> Public gets only 'active'.
+     * `featured` (true | false)
+     * `minPrice` / `maxPrice` (number)
+     * `sort` (e.g. -createdAt, price, -price, -sold)
+   - Example Response:
+     {
+       "success": true,
+       "message": "Products retrieved successfully!",
+       "data": [
+         {
+           "_id": "66d3a101...",
+           "name": "IFundAyiti Heavyweight French Terry Emblem Hoodie",
+           "description": "Crafted from 100% organic 450 GSM French terry cotton with high-density embroidered chest logo and Haitian flag arm patch. Pre-shrunk for a relaxed, structured fit.",
+           "category": {
+             "_id": "66d2c101...",
+             "name": "Hoodies & Sweatshirts"
+           },
+           "price": 68,
+           "compareAtPrice": 85,
+           "images": [
+             "/uploads/hoodie-navy-front.webp",
+             "/uploads/hoodie-navy-back.webp",
+             "/uploads/hoodie-detail-embroidery.webp"
+           ],
+           "variants": [
+             {
+               "size": "S",
+               "color": "Caribbean Navy",
+               "stock": 12,
+               "isPreOrder": false
+             },
+             {
+               "size": "M",
+               "color": "Caribbean Navy",
+               "stock": 25,
+               "isPreOrder": false
+             },
+             {
+               "size": "L",
+               "color": "Caribbean Navy",
+               "stock": 0,
+               "isPreOrder": true,
+               "expectedAvailableDate": "2026-10-20T00:00:00.000Z"
+             },
+             {
+               "size": "XL",
+               "color": "Caribbean Navy",
+               "stock": 8,
+               "isPreOrder": false
+             },
+             {
+               "size": "M",
+               "color": "Oatmeal Heather",
+               "stock": 15,
+               "isPreOrder": false
+             },
+             {
+               "size": "L",
+               "color": "Oatmeal Heather",
+               "stock": 18,
+               "isPreOrder": false
+             }
+           ],
+           "gender": "unisex",
+           "tags": ["hoodie", "french-terry", "embroidery", "heavyweight", "organic"],
+           "status": "active",
+           "featured": true,
+           "sold": 84,
+           "createdAt": "2026-09-01T10:00:00.000Z"
+         }
+       ],
+       "pagination": { "page": 1, "limit": 12, "total": 18, "totalPage": 2 }
+     }
+
+2. STORE ANALYTICS & INVENTORY STATS (For Admin Dashboard):
+   - Endpoint: GET /product/stats
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>
+   - Response:
+     {
+       "success": true,
+       "message": "Product analytics and stats retrieved successfully!",
+       "data": {
+         "totalProducts": 18,
+         "activeProducts": 14,
+         "draftProducts": 2,
+         "inactiveProducts": 1,
+         "archivedProducts": 1,
+         "featuredProducts": 4,
+         "totalSold": 420,
+         "totalInventoryUnits": 1250,
+         "outOfStockVariants": 6
+       }
+     }
+
+3. GET SINGLE APPAREL PRODUCT:
+   - Endpoint: GET /product/:id
+   - Populates category and returns all size/color variants with stock status.
+
+4. CREATE APPAREL PRODUCT:
+   - Endpoint: POST /product
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: multipart/form-data
+   - Form-Data Fields:
+     * `name` (string, e.g. "1804 Heritage Heavyweight Graphic Tee")
+     * `description` (string, detailing fabric weight, fit, care instructions)
+     * `category` (ObjectId string)
+     * `price` (number, e.g. 35)
+     * `compareAtPrice` (number, optional, e.g. 45 -> must be >= price)
+     * `gender` (men | women | unisex | kids)
+     * `status` (draft | active | inactive | archived)
+     * `featured` (boolean)
+     * `tags` (JSON array: `["tshirt", "graphic", "1804", "cotton"]`)
+     * `variants` (JSON array of size/color SKUs):
+       `[
+         {"size": "S", "color": "Vintage Black", "stock": 20, "isPreOrder": false},
+         {"size": "M", "color": "Vintage Black", "stock": 35, "isPreOrder": false},
+         {"size": "L", "color": "Vintage Black", "stock": 0, "isPreOrder": true, "expectedAvailableDate": "2026-10-30"},
+         {"size": "XL", "color": "Vintage Black", "stock": 15, "isPreOrder": false},
+         {"size": "S", "color": "Palm Green", "stock": 10, "isPreOrder": false},
+         {"size": "M", "color": "Palm Green", "stock": 22, "isPreOrder": false}
+       ]`
+     * `images` (Files: up to 10 photos of front, back, model shots, fabric close-up)
+
+5. UPDATE APPAREL PRODUCT:
+   - Endpoint: PATCH /product/:id
+   - Headers: Authorization: Bearer <ADMIN_TOKEN>, Content-Type: multipart/form-data
+   - Accepts any subset of fields + new image uploads.
+
+6. QUICK STATUS TRANSITION:
+   - Endpoint: PATCH /product/status/:id
+   - Body: { "status": "active" | "draft" | "inactive" | "archived" }
+
+7. TOGGLE FEATURED (SPOTLIGHT ON HOMEPAGE/STORE):
+   - Endpoint: PATCH /product/featured/:id
+
+8. SIZE & COLOR VARIANT INVENTORY CONTROL:
+   - Set Specific Variant Stock:
+     PATCH /product/variant-stock/:id
+     Body: { "size": "L", "color": "Vintage Black", "stock": 50 }
+   - Restock Variant (Add Quantity):
+     PATCH /product/increase-stock/:id
+     Body: { "size": "L", "color": "Vintage Black", "quantity": 25 }
+   - Toggle Variant Pre-Order Mode:
+     PATCH /product/pre-order/:id
+     Body: {
+       "size": "XL",
+       "color": "Palm Green",
+       "isPreOrder": true,
+       "expectedAvailableDate": "2026-11-15"
+     }
+
+9. CHECK REAL-TIME VARIANT AVAILABILITY (Used by Storefront Cart):
+   - Endpoint: GET /product/check-availability/:id?size=M&color=Vintage%20Black&quantity=2
+   - Response:
+     {
+       "success": true,
+       "data": {
+         "available": true,
+         "isPreOrder": false,
+         "stock": 35,
+         "expectedAvailableDate": null
+       }
+     }
+
+10. DELETE PRODUCT:
+    - Endpoint: DELETE /product/:id
+    - Note: System protects products with sales history (`sold > 0`) from accidental deletion.
+
+--------------------------------------------------------------------------------
+3. ADMIN DASHBOARD SPECIFICATION (Clothing & Inventory Management)
+--------------------------------------------------------------------------------
+
+A. REDUX API SLICES
+   1. `src/redux/features/products/productsApi.ts`
+      - Tags: `Products` (LIST, STATS, and specific IDs)
+      - Endpoints for listing, filtering, create/update/delete, status transitions,
+        and variant stock adjustments.
+   2. `src/redux/features/categories/categoriesApi.ts`
+      - Tags: `ProductCategories` (LIST)
+
+B. APPAREL CATALOG MANAGEMENT PAGE (/dashboard/products)
+   1. KPI Stat Cards:
+      - Total Garments in Catalog
+      - Active Live in Store
+      - Total Inventory Stock across all Sizes/Colors
+      - Out-of-Stock Variants Alert Badge (indicating sizes needing restock)
+      - Total Units Sold
+   2. Filter & Action Toolbar:
+      - Live search (by product name, tags, or description)
+      - Category Filter dropdown (Hoodies, T-Shirts, Headwear, etc.)
+      - Gender Filter tabs (All, Men, Women, Unisex, Kids)
+      - Status Tabs (`All`, `Active`, `Draft`, `Inactive`, `Archived`) with count badges
+      - "+ Add Apparel Item" Primary Action CTA
+      - "Manage Categories" Secondary CTA
+   3. Data Table & Visual Grid View:
+      - Columns:
+        * Garment Thumbnail + Name + Gender Badge (e.g. [Unisex])
+        * Category Badge (e.g. Hoodies)
+        * Price & Compare-At (with discount % calculation)
+        * Available Sizes & Colors Pill List (e.g. Sizes: S, M, L, XL | Colors: Navy, Black)
+        * Inventory Units (with Low Stock / Pre-Order warnings)
+        * Total Sold
+        * Featured Spotlight toggle switch
+        * Status Dropdown menu
+        * Actions (Edit, Quick Stock Adjust, Delete)
+
+C. CREATE & EDIT CLOTHING MODAL / DRAWER
+   - Multi-step or multi-section form:
+     1. Basic Info:
+        - Product Title (e.g. "IFundAyiti French Terry Pullover Hoodie")
+        - Category Dropdown (populated from /product-category)
+        - Gender Select: [Men, Women, Unisex, Kids]
+        - Tags (Input tags: "fleece", "hoodie", "organic", "1804")
+        - Detailed Garment Description (Fabric composition, GSM weight, fit type, wash care)
+     2. Pricing & Publishing:
+        - Retail Price ($)
+        - Compare-at Price ($) (for sales/discount badge)
+        - Status (Draft / Active / Inactive / Archived)
+        - Feature on Homepage (Toggle)
+     3. Media Gallery Upload:
+        - Drag-and-drop dropzone for up to 10 high-res photos (Front, Back, Model, Fabric close-up)
+        - Image preview grid with remove buttons.
+     4. Dynamic Variant & Inventory Matrix Builder:
+        - Interactive table with quick preset buttons:
+          * Size Presets: "+ Standard Sizes (S, M, L, XL, XXL)"
+          * Color Input: Name (e.g. "Caribbean Navy", "Oatmeal", "Crimson") + optional Hex Color Swatch
+        - Each Variant Row includes:
+          * Size (S, M, L, XL, etc.)
+          * Color Name (Navy, Black, etc.)
+          * Stock Quantity (Number, min: 0)
+          * Pre-Order Checkbox ("Accept orders when out of stock")
+          * Expected Available Date (DatePicker, enabled only if Pre-Order is checked)
+          * Delete row button
+
+D. QUICK VARIANT RESTOCK MODAL (/dashboard/products -> Restock)
+   - Allows warehouse admins to select a garment, choose Color and Size from a dropdown,
+     and instantly add +X units to stock without opening the full edit form.
+
+--------------------------------------------------------------------------------
+4. PUBLIC WEBSITE STOREFRONT SPECIFICATION (Clothing & Merchandise)
+--------------------------------------------------------------------------------
+
+A. APPAREL STORE DIRECTORY (/shop or /products)
+   1. Hero Banner:
+      - Brand Headline: "Wear the Mission: Ethical Haitian Apparel"
+      - Subheadline: "100% organic cotton garments and embroidered streetwear. Every purchase directly powers community development and clean energy in Haiti."
+      - Trust Badges: "100% Non-Profit Impact", "Ethically Made", "Fast Worldwide Shipping".
+   2. Filter & Navigation Toolbar:
+      - Category Tabs (All, Hoodies, T-Shirts, Headwear, Outerwear, Accessories)
+      - Gender Filter Pills (All, Unisex, Men, Women, Kids)
+      - Price Range Slider ($20 - $120)
+      - In-Stock Only toggle
+      - Sort Dropdown (Featured First, New Arrivals, Price: Low to High, Best Sellers)
+   3. Clothing Card Grid (3-4 Columns):
+      - Card Features:
+        * High-res garment photo with secondary angle on hover
+        * Discount badge (e.g. "20% OFF") if `compareAtPrice > price`
+        * Featured Star badge
+        * Gender & Category badge (e.g. "UNISEX · HOODIES")
+        * Garment Name
+        * Available Color Dots preview (clickable swatches)
+        * Available Sizes pills preview (e.g. S, M, L, XL)
+        * Price ($XX) with crossed-out original price ($YY)
+        * Stock badge: "In Stock" / "Only 3 Left" / "Pre-Order Available"
+        * "Quick View" modal trigger and "Add to Bag" button
+
+B. CLOTHING PRODUCT DETAIL PAGE (/shop/[id] or /products/[id])
+   1. 2-Column Responsive Layout:
+      - Left Column (Garment Gallery):
+        * Main large zoomable image
+        * Thumbnail carousel (Front, Back, Side, On-Model, Fabric Texture)
+        * Keyboard navigation support
+      - Right Column (Garment Selection & Checkout):
+        * Breadcrumbs (Home > Shop > Hoodies > [Product Name])
+        * Garment Title & Category
+        * Price display with discount badge & savings counter (e.g. "Save $17")
+        * Color Selector:
+          - Visual circular color swatches with active ring indicator
+          - Displays selected color name (e.g. "Color: Caribbean Navy")
+        * Size Selector & Real-Time Stock Status:
+          - Size Pills: XS, S, M, L, XL, XXL
+          - Visual size states:
+            * Active selected size
+            * In-Stock size (Standard pill)
+            * Low-Stock size (Pill with "Only 2 left" badge)
+            * Pre-Order size (Pill with clock icon "Pre-Order")
+            * Out-of-Stock size (Crossed out / disabled)
+        * Dynamic Stock Callout Banner:
+          - When In-Stock selected: "✓ In Stock — Ships within 24-48 hours"
+          - When Pre-Order selected: "⏳ Pre-Order Item — Expected dispatch: [Date]"
+        * Size Chart Guide Link & Modal:
+          - Opens interactive size chart popup with measurements (Chest, Body Length, Sleeve Length) in Inches and CM.
+        * Quantity Counter (- / + counter with bounds checking)
+        * Primary Action Buttons:
+          - "Add to Bag" / "Pre-Order Now" CTA button (full-width, high-contrast)
+          - "Buy Now" Instant Stripe Checkout CTA
+        * Garment Guarantees & Shipping:
+          - "Free shipping on orders over $75"
+          - "Easy 30-day returns & exchanges"
+          - "Ethically crafted with organic sustainable cotton"
+   2. Product Specs & Story Tabs:
+      - Tab 1 (Fabric & Specifications):
+        * 100% Combed Ringspun Cotton / 450 GSM Heavyweight French Terry
+        * High-density embroidery & woven label
+        * Pre-shrunk relaxed fit
+        * Machine wash cold, hang dry or tumble dry low
+      - Tab 2 (The Social Impact):
+        * Highlights the grassroots projects in Haiti funded by this garment's revenue.
+      - Tab 3 (Size & Fit Guide):
+        * Model stats (e.g. "Model is 6'1\" wearing size Large").
+   3. Related Garments Section:
+      - "Complete the Look" / "You Might Also Like" 4-card carousel.
+

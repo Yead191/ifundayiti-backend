@@ -1,7 +1,7 @@
 import { Schema, model } from 'mongoose';
 import { ICart, CartModel } from './cart.interface';
 import { getRandomId } from '../../../shared/getRandomId';
-import { Product } from '../book/book.model';
+import { Product } from '../product/product.model';
 import ApiError from '../../../errors/ApiError';
 import { StatusCodes } from 'http-status-codes';
 

@@ -1,7 +1,7 @@
 import express from 'express';
 import { AuthRoutes } from '../app/modules/auth/auth.route';
 import { UserRoutes } from '../app/modules/user/user.route';
-import { BookRoutes } from '../app/modules/book/book.route';
+import { ProductRoutes, BookRoutes } from '../app/modules/product/product.route';
 import { NotificationRoutes } from '../app/modules/notification/notification.route';
 import { MembershipRoutes } from '../app/modules/membership/membership.route';
 import { ApplicationperiodRoutes } from '../app/modules/iFundAyiti/applicationperiod/applicationperiod.route';
@@ -22,6 +22,7 @@ import { CouponRoutes } from '../app/modules/coupon/coupon.route';
 import { TeamRoutes } from '../app/modules/team/team.route';
 import { ProjectRoutes } from '../app/modules/project/project.route';
 import { GalleryRoutes } from '../app/modules/gallery/gallery.route';
+import { ProductcategoryRoutes } from '../app/modules/productcategory/productcategory.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -34,6 +35,22 @@ const apiRoutes = [
     route: AuthRoutes,
   },
 
+  {
+    path: '/product',
+    route: ProductRoutes,
+  },
+  {
+    path: '/products',
+    route: ProductRoutes,
+  },
+  {
+    path: '/product-category',
+    route: ProductcategoryRoutes,
+  },
+  {
+    path: '/productcategory',
+    route: ProductcategoryRoutes,
+  },
   {
     path: '/books',
     route: BookRoutes,
