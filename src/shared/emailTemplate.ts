@@ -12,6 +12,7 @@ import {
   orderConfirmation,
   adminOrderNotification,
   orderStatusUpdate,
+  preOrderReady,
 } from '../templates/orderTemplate';
 import {
   vendorStatusUpdate,
@@ -51,6 +52,7 @@ export const emailTemplate = {
   orderConfirmation,
   adminOrderNotification,
   orderStatusUpdate,
+  preOrderReady,
   vendorStatusUpdate,
   vendorCredentials,
   vendorProfileVisibilityUpdate,

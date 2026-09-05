@@ -39,7 +39,7 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
         ) {
           await handleDonationCheckout(session);
         } else if (session.metadata?.orderId) {
-          await handleOrderPurchase(session);
+          await handleOrderPurchase(session); //order
         } else if (session.metadata?.membershipId) {
           await handleMembershipCheckout(session);
         }

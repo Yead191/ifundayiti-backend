@@ -1,52 +1,67 @@
 import { Model, Types } from 'mongoose';
-import { ORDER_STATUS } from '../../../enums/orders';
+import {
+  ORDER_STATUS,
+  PAYMENT_STATUS,
+  PRE_ORDER_STATUS,
+} from './order.constants';
 
-export type IOrder = {
+export interface IOrderItem {
+  product: Types.ObjectId;
+
+  name: string;
+  image?: string;
+
+  size: string;
+  color: string;
+
+  quantity: number;
+  price: number;
+  total_price: number;
+
+  isPreOrder: boolean;
+  expectedAvailableDate?: Date;
+  preOrderStatus?: PRE_ORDER_STATUS;
+}
+
+export interface IPriceBreakdown {
+  subtotal: number;
+  delivery_charge: number;
+  tax: number;
+  discount_amount: number;
+  total_price: number;
+}
+
+export interface IAddressBreakdown {
+  country: string;
+  city: string;
+  postal_code: string;
+  street_address: string;
+}
+
+export interface IOrder {
   user: Types.ObjectId;
-  items: {
-    _id: Types.ObjectId;
-    title: string;
-    image: string;
-    quantity: number;
-    unit_price: number;
-    total_price: number;
-  }[];
-  payment_status: 'pending' | 'paid';
-  status: ORDER_STATUS;
-  order_id: string;
-  payment_intent_id?: string;
-  transaction_id?: string;
-  discount_percentage?: number;
-  discount_amount?: number;
-  coupon?: string;
 
-  price_breakdown: {
-    subtotal: number;
-    serviceFee: number;
-    discount_amount: number;
-    delivery_charge: number;
-    total_price: number;
-    tax: number;
-    products_price: number;
-  };
+  items: IOrderItem[];
+
+  price_breakdown: IPriceBreakdown;
+
+  total_items: number;
+
   formatted_address: string;
-  address_breakdown: {
-    country?: string;
-    city?: string;
-    postal_code?: string;
-    street_address?: string;
-  };
+  address_breakdown: IAddressBreakdown;
+
   contact_number: string;
-  total_items?: number;
-};
+
+  status: ORDER_STATUS;
+  payment_status: PAYMENT_STATUS;
+
+  order_id: string;
+
+  payment_intent_id?: string;
+  transaction_id?: Types.ObjectId;
+
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 export type OrderModel = Model<IOrder>;
-
-export type OrderPayload = {
-  country?: string;
-  city?: string;
-  postal_code?: string;
-  street_address?: string;
-  contact_number: string;
-  coupon?: string;
-};

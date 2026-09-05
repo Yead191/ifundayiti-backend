@@ -17,228 +17,282 @@ import { emailTemplate } from '../shared/emailTemplate';
 import { User } from '../app/modules/user/user.model';
 import { USER_ROLES } from '../enums/user';
 import config from '../config';
+import {
+  ORDER_STATUS,
+  PAYMENT_STATUS,
+  PRE_ORDER_STATUS,
+} from '../app/modules/order/order.constants';
+import { Product } from '../app/modules/product/product.model';
 
-export const handleOrderPurchase = async (
-  orderSession: Stripe.Checkout.Session,
-) => {
-  const session = await mongoose.startSession();
+export const handleOrderPurchase = async (session: Stripe.Checkout.Session) => {
+  const orderId = session.metadata?.orderId;
+
+  if (!orderId) {
+    throw new Error('Order ID missing from Stripe metadata');
+  }
+
+  const mongoSession = await mongoose.startSession();
 
   try {
-    session.startTransaction();
-    const metadata = orderSession?.metadata || {};
-    const userId = metadata?.userId;
-    const orderId = metadata?.orderId;
-    const couponCode = metadata?.coupon || '';
+    mongoSession.startTransaction();
 
-    const orderDetails = await Order.findById(orderId)
-      .populate('user')
-      .session(session);
+    const order = await Order.findById(orderId).session(mongoSession);
 
-    if (!orderDetails) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Order not found');
+    if (!order) {
+      throw new Error('Order not found');
     }
 
-    const subtotal = orderSession?.amount_subtotal
-      ? orderSession.amount_subtotal / 100
-      : orderDetails.price_breakdown?.total_price || 0;
-    const amountPaid = orderSession?.amount_total
-      ? orderSession.amount_total / 100
-      : subtotal;
-    let discountAmount = orderSession?.total_details?.amount_discount
-      ? orderSession.total_details.amount_discount / 100
-      : subtotal > amountPaid
-        ? subtotal - amountPaid
-        : 0;
+    /*
+     * Idempotency protection.
+     *
+     * Stripe can send the same webhook more than once.
+     */
+    if (order.payment_status === PAYMENT_STATUS.PAID) {
+      await mongoSession.commitTransaction();
 
-    let discountPercentage = 0;
-    let couponDoc: any = null;
+      return;
+    }
 
-    if (couponCode) {
-      couponDoc = await Coupon.findOne({ coupon_code: couponCode }).session(
-        session,
+    /*
+     * Payment amount from Stripe.
+     */
+    const amountPaid = (session.amount_total || 0) / 100;
+
+    /*
+     * Make sure Stripe amount matches our order.
+     */
+    if (Math.abs(amountPaid - order.price_breakdown.total_price) > 0.01) {
+      throw new Error('Stripe payment amount does not match order total');
+    }
+
+    /*
+     * Process each order item.
+     */
+    for (const item of order.items) {
+      /*
+       * PRE-ORDER
+       */
+      if (item.isPreOrder) {
+        item.preOrderStatus = PRE_ORDER_STATUS.CONFIRMED;
+
+        continue;
+      }
+
+      /*
+       * REGULAR PRODUCT
+       *
+       * Atomically decrease stock.
+       */
+      const updatedProduct = await Product.findOneAndUpdate(
+        {
+          _id: item.product,
+
+          variants: {
+            $elemMatch: {
+              size: item.size,
+              color: item.color,
+              stock: {
+                $gte: item.quantity,
+              },
+              isPreOrder: false,
+            },
+          },
+        },
+        {
+          $inc: {
+            'variants.$.stock': -item.quantity,
+            sold: item.quantity,
+          },
+        },
+        {
+          new: true,
+          session: mongoSession,
+        },
       );
 
-      if (couponDoc) {
-        if (couponDoc.type === 'percentage') {
-          discountPercentage = couponDoc.amount;
-          if (!discountAmount) {
-            discountAmount = (subtotal * couponDoc.amount) / 100;
-          }
-        } else if (couponDoc.type === 'fixed') {
-          discountPercentage = 0;
-          if (!discountAmount) {
-            discountAmount = couponDoc.amount;
-          }
-        }
-
-        // Track user's coupon usage and increment total_uses
-        await CouponUser.create(
-          [
-            {
-              coupon: couponDoc._id,
-              user: userId,
-            },
-          ],
-          { session },
+      if (!updatedProduct) {
+        throw new Error(
+          `Insufficient stock for ${item.name} (${item.size}/${item.color})`,
         );
       }
     }
 
-    const paymentTxnId =
-      (orderSession.payment_intent as string) || orderSession.id;
+    /*
+     * Update order payment information.
+     */
+    order.payment_status = PAYMENT_STATUS.PAID;
 
-    const transaction = (
-      await Transaction.create(
-        [
-          {
-            user: userId,
-            total_price: subtotal,
-            payment_received: amountPaid,
-            discount_amount: discountAmount,
-            discount_percentage: discountPercentage,
-            platform_fee: orderDetails.price_breakdown.serviceFee,
-            status: TRANSACTION_STATUS.SUCCESS,
-            type: TRANSACTION_TYPE.CREDIT,
-            category: TRANSACTION_CATEGORY.SHOP,
-            order: orderId,
-            transaction_id: paymentTxnId,
-          },
-        ],
-        { session },
-      )
-    )[0];
+    order.status = ORDER_STATUS.CONFIRMED;
 
-    await Order.findOneAndUpdate(
-      { _id: orderId },
+    order.payment_intent_id =
+      typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id;
+    const transaction = await Transaction.create(
+      [
+        {
+          user: order.user,
+          amount: amountPaid,
+          type: TRANSACTION_TYPE.DEBIT,
+          category: TRANSACTION_CATEGORY.SHOP,
+          status: TRANSACTION_STATUS.SUCCESS,
+          payment_method: 'stripe',
+          payment_intent_id: order.payment_intent_id,
+          order: order._id,
+        },
+      ],
       {
-        payment_status: 'paid',
-        payment_intent_id: paymentTxnId,
-        transaction_id: transaction.transaction_id,
-        coupon: couponCode,
-        discount_amount: discountAmount,
-        discount_percentage: discountPercentage,
-        'price_breakdown.discount_amount': discountAmount,
-        'price_breakdown.total_price': amountPaid,
+        session: mongoSession,
       },
-    ).session(session);
+    );
 
-    await Cart.deleteMany({ user: userId }).session(session);
+    order.transaction_id = transaction[0]._id;
+    await order.save({
+      session: mongoSession,
+    });
 
-    await session.commitTransaction();
-    session.endSession();
+    /*
+     * Remove cart only after successful payment
+     * and successful inventory processing.
+     */
+    await Cart.deleteMany(
+      {
+        user: order.user,
+      },
+      {
+        session: mongoSession,
+      },
+    );
 
-    // Send Notifications & Emails after successful transaction commit
-    const customer = orderDetails.user as any;
-    const customerName = customer?.name || 'Customer';
-    const customerEmail = customer?.email;
+    await mongoSession.commitTransaction();
 
-    // 1. Notification to User
-    if (customer?._id) {
+    /*
+     * Send notifications and emails AFTER transaction commit
+     */
+    try {
+      const customer = await User.findById(order.user).lean();
+      const customerName = customer?.name || 'Valued Customer';
+      const customerEmail = customer?.email;
+
+      // 1. Notification to Customer
+      if (order.user) {
+        try {
+          await NotificationServices.createNotification({
+            receiver: order.user,
+            title: 'Order Confirmed',
+            message: `Your order #${order.order_id} has been confirmed and paid successfully.`,
+            refId: order._id,
+            path: '/dashboard/orders',
+          });
+        } catch (notifErr) {
+          console.error(
+            'Failed to send order notification to customer:',
+            notifErr,
+          );
+        }
+      }
+
+      // 2. Notification to Admins
       try {
-        await NotificationServices.createNotification({
-          receiver: customer._id,
-          title: 'Order Placed Successfully',
-          message: `Your order #${orderDetails.order_id} has been placed successfully.`,
-          refId: orderDetails._id,
-          path: '/dashboard/orders',
+        await NotificationServices.sendNotificationToAdmins({
+          title: 'New Store Order Received',
+          message: `A new order #${order.order_id} ($${Number(order.price_breakdown.total_price).toFixed(2)}) was placed by ${customerName}.`,
+          refId: order._id,
+          path: '/admin/orders',
         });
       } catch (notifErr) {
-        console.error('Failed to create user notification:', notifErr);
+        console.error('Failed to send order notification to admins:', notifErr);
       }
-    }
 
-    // 2. Notification to Admins
-    try {
-      await NotificationServices.sendNotificationToAdmins({
-        title: 'New Order Received',
-        message: `A new order #${orderDetails.order_id} was placed by ${customerName}.`,
-        refId: orderDetails._id,
-        path: '/store/orders',
-      });
-    } catch (notifErr) {
-      console.error('Failed to send admin notification:', notifErr);
-    }
-
-    // 3. Email to User
-    if (customerEmail) {
-      try {
-        const userEmailData = emailTemplate.orderConfirmation({
-          email: customerEmail,
-          name: customerName,
-          orderId: orderDetails.order_id,
-          transactionId: transaction.transaction_id,
-          items: (orderDetails.items || []).map((item: any) => ({
-            title: item.title,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price,
-          })),
-          productsPrice: orderDetails.price_breakdown?.products_price,
-          deliveryCharge: orderDetails.price_breakdown?.delivery_charge,
-          serviceFee: orderDetails.price_breakdown?.serviceFee,
-          tax: orderDetails.price_breakdown?.tax,
-          totalPrice: amountPaid,
-          originalPrice: subtotal,
-          couponCode: couponCode || undefined,
-          discountAmount: discountAmount || undefined,
-          formattedAddress: orderDetails.formatted_address,
-          contactNumber: orderDetails.contact_number,
-        });
-        await emailHelper.sendEmail(userEmailData);
-      } catch (emailErr) {
-        console.error(
-          'Failed to send user order confirmation email:',
-          emailErr,
-        );
+      // 3. Confirmation Email to Customer
+      if (customerEmail) {
+        try {
+          const userEmailData = emailTemplate.orderConfirmation({
+            email: customerEmail,
+            name: customerName,
+            orderId: order.order_id,
+            transactionId: order.payment_intent_id,
+            items: order.items.map(item => ({
+              name: item.name,
+              size: item.size,
+              color: item.color,
+              quantity: item.quantity,
+              price: item.price,
+              total_price: item.total_price,
+              isPreOrder: item.isPreOrder,
+            })),
+            subtotal: order.price_breakdown.subtotal,
+            deliveryCharge: order.price_breakdown.delivery_charge,
+            tax: order.price_breakdown.tax,
+            discountAmount: order.price_breakdown.discount_amount,
+            totalPrice: order.price_breakdown.total_price,
+            formattedAddress: order.formatted_address,
+            contactNumber: order.contact_number,
+          });
+          await emailHelper.sendEmail(userEmailData);
+        } catch (emailErr) {
+          console.error(
+            'Failed to send customer order confirmation email:',
+            emailErr,
+          );
+        }
       }
-    }
 
-    // 4. Email to Admin(s)
-    try {
-      const admins = await User.find({
-        $or: [{ role: USER_ROLES.ADMIN }, { role: USER_ROLES.SUPER_ADMIN }],
-      });
+      // 4. Order Details Email to config.support.order (and Admin Support)
+      const supportOrderEmail =
+        config.support.order ||
+        config.support.admin ||
+        config.super_admin.email;
 
-      const adminEmails = Array.from(
-        new Set(
-          [...admins.map(a => a.email), config.super_admin.email].filter(
-            Boolean,
-          ),
-        ),
+      if (supportOrderEmail) {
+        try {
+          const adminEmailData = emailTemplate.adminOrderNotification({
+            adminEmail: supportOrderEmail,
+            adminName: 'Store Administrator',
+            customerName,
+            customerEmail: customerEmail || 'N/A',
+            customerPhone: order.contact_number,
+            orderId: order.order_id,
+            transactionId: order.payment_intent_id,
+            items: order.items.map(item => ({
+              name: item.name,
+              size: item.size,
+              color: item.color,
+              quantity: item.quantity,
+              price: item.price,
+              total_price: item.total_price,
+              isPreOrder: item.isPreOrder,
+            })),
+            subtotal: order.price_breakdown.subtotal,
+            deliveryCharge: order.price_breakdown.delivery_charge,
+            tax: order.price_breakdown.tax,
+            discountAmount: order.price_breakdown.discount_amount,
+            totalPrice: order.price_breakdown.total_price,
+            formattedAddress: order.formatted_address,
+          });
+          await emailHelper.sendEmail(adminEmailData);
+        } catch (emailErr) {
+          console.error(
+            'Failed to send admin order notification email:',
+            emailErr,
+          );
+        }
+      }
+    } catch (postProcessErr) {
+      console.error(
+        'Error during post-order notifications and emails:',
+        postProcessErr,
       );
-
-      for (const adminEmail of adminEmails) {
-        const adminEmailData = emailTemplate.adminOrderNotification({
-          adminEmail: adminEmail as string,
-          adminName: 'Admin',
-          customerName,
-          customerEmail: customerEmail || 'N/A',
-          orderId: orderDetails.order_id,
-          transactionId: transaction.transaction_id,
-          items: (orderDetails.items || []).map((item: any) => ({
-            title: item.title,
-            quantity: item.quantity,
-            unit_price: item.unit_price,
-            total_price: item.total_price,
-          })),
-          productsPrice: orderDetails.price_breakdown?.products_price,
-          deliveryCharge: orderDetails.price_breakdown?.delivery_charge,
-          serviceFee: orderDetails.price_breakdown?.serviceFee,
-          tax: orderDetails.price_breakdown?.tax,
-          totalPrice: amountPaid,
-          originalPrice: subtotal,
-          couponCode: couponCode || undefined,
-          discountAmount: discountAmount || undefined,
-          formattedAddress: orderDetails.formatted_address,
-        });
-        await emailHelper.sendEmail(adminEmailData);
-      }
-    } catch (emailErr) {
-      console.error('Failed to send admin order notification email:', emailErr);
     }
+
+    return order;
   } catch (error) {
-    session.abortTransaction();
-    session.endSession();
-    console.log(error);
+    await mongoSession.abortTransaction();
+
+    console.error('Order purchase processing failed:', error);
+
+    throw error;
+  } finally {
+    await mongoSession.endSession();
   }
 };

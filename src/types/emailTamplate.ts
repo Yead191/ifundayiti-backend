@@ -39,10 +39,16 @@ export type IDonationReceived = {
   transactionId?: string;
 };
 export type IOrderItem = {
-  title: string;
+  name?: string;
+  title?: string;
+  image?: string;
+  size?: string;
+  color?: string;
   quantity: number;
-  unit_price: number;
+  price?: number;
+  unit_price?: number;
   total_price: number;
+  isPreOrder?: boolean;
 };
 
 export type IOrderConfirmation = {
@@ -53,6 +59,7 @@ export type IOrderConfirmation = {
   items: IOrderItem[];
   totalPrice: number;
   originalPrice?: number;
+  subtotal?: number;
   productsPrice?: number;
   deliveryCharge?: number;
   serviceFee?: number;
@@ -68,11 +75,13 @@ export type IAdminOrderNotification = {
   adminName: string;
   customerName: string;
   customerEmail: string;
+  customerPhone?: string;
   orderId: string;
   transactionId?: string;
   items: IOrderItem[];
   totalPrice: number;
   originalPrice?: number;
+  subtotal?: number;
   productsPrice?: number;
   deliveryCharge?: number;
   serviceFee?: number;
@@ -87,6 +96,19 @@ export type IOrderStatusUpdate = {
   name: string;
   orderId: string;
   status: string;
+  formattedAddress?: string;
+  totalPrice?: number;
+  items?: IOrderItem[];
+};
+
+export type IPreOrderReady = {
+  email: string;
+  name: string;
+  orderId: string;
+  productName: string;
+  size: string;
+  color: string;
+  quantity: number;
   formattedAddress?: string;
   totalPrice?: number;
 };

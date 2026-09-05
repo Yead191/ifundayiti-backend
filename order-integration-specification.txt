@@ -1,0 +1,388 @@
+================================================================================
+COMPLETE SPECIFICATION & PROMPT: ORDER SYSTEM (WEBSITE & ADMIN DASHBOARD)
+================================================================================
+
+Target Applications:
+  1. User Website (E-Commerce Storefront: Next.js / React / Vue)
+  2. Admin Dashboard (Admin Portal: React / Next.js / Tailwind)
+Base API Route: /order 
+Authentication: Bearer Token in Authorization header required for all endpoints
+
+================================================================================
+1. ARCHITECTURE & WORKFLOW OVERVIEW
+================================================================================
+
+The IFundAyiti Order Lifecycle follows an automated, reliable e-commerce flow:
+
+A. CUSTOMER CHECKOUT & ORDER CREATION:
+   1. Customer adds apparel items (with size & color) to cart (/cart).
+   2. Customer navigates to /checkout, enters delivery address and phone number.
+   3. Frontend calls `POST /order` with shipping information.
+   4. Backend validates active status, variant existence, and stock / pre-order validity for all cart items.
+   5. Backend calculates exact subtotal, 8.875% tax, delivery fee ($11.99 or Free for orders >= $150), and creates an Order with `payment_status: 'pending'` and `status: 'pending'`.
+   6. Backend initializes a Stripe Checkout Session and returns the Stripe Hosted Checkout URL.
+   7. Customer is redirected to Stripe to pay securely.
+
+B. STRIPE WEBHOOK & INVENTORY PROCESSING:
+   1. On successful payment, Stripe emits `checkout.session.completed` to the webhook (`/webhook`).
+   2. Webhook handler (`handleOrderPurchase`):
+      - Executes inside a MongoDB session transaction.
+      - Verifies idempotency (prevents double processing).
+      - Decrements product variant stock atomically (`$inc: { 'variants.$.stock': -quantity, sold: quantity }`).
+      - For Pre-Order items, sets `preOrderStatus: 'confirmed'`.
+      - Updates order to `payment_status: 'paid'` and `status: 'confirmed'`.
+      - Logs the financial Transaction record (`TRANSACTION_CATEGORY.SHOP`, `TRANSACTION_TYPE.DEBIT`).
+      - Clears the user's shopping cart.
+      - Commits transaction.
+      - Sends in-app notification to the customer ("Order Confirmed").
+      - Sends in-app notification to all Admins ("New Store Order Received").
+      - Sends luxury HTML Order Confirmation Email to the customer.
+      - Sends Order Details Alert Email to `config.support.order` / admin support.
+
+C. ADMIN ORDER MANAGEMENT:
+   1. Admin views all paid orders with pagination, search, and status filters (`GET /order`).
+   2. Admin inspects order details (`GET /order/:id`).
+   3. Admin transitions status (`PATCH /order/:id` with `{ status: "processing" | "shipped" | "delivered" | "cancelled" }`).
+      - Updates order status in DB.
+      - Sends real-time in-app notification to the customer.
+      - Sends status update email to the customer with updated tracking/order info.
+   4. Admin fulfills Pre-Orders (`PATCH /order/pre-order-ready/:orderId/items/:itemIndex`):
+      - Enforces FIFO fairness (earlier confirmed pre-orders must be fulfilled first).
+      - Checks stock in inventory and atomically decrements variant stock.
+      - Sets `item.preOrderStatus: 'ready'`.
+      - Sends in-app notification & arrival email to the customer.
+   5. Admin deletes orders if needed (`DELETE /order/:id`).
+
+================================================================================
+2. ENUMS, TYPES & DATA INTERFACES
+================================================================================
+
+```typescript
+// Status Enums
+export enum ORDER_STATUS {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  PROCESSING = 'processing',
+  SHIPPED = 'shipped',
+  DELIVERED = 'delivered',
+  CANCELLED = 'cancelled',
+}
+
+export enum PAYMENT_STATUS {
+  PENDING = 'pending',
+  PAID = 'paid',
+  FAILED = 'failed',
+  REFUNDED = 'refunded',
+}
+
+export enum PRE_ORDER_STATUS {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  READY = 'ready',
+  COMPLETED = 'completed',
+  CANCELLED = 'cancelled',
+}
+
+// Order Item Interface
+export interface IOrderItem {
+  product: {
+    _id: string;
+    name: string;
+    images: string[];
+    sold?: number;
+    variants?: any[];
+    category?: string;
+  } | string;
+  name: string;
+  image?: string;
+  size: string;
+  color: string;
+  quantity: number;
+  price: number;
+  total_price: number;
+  isPreOrder: boolean;
+  expectedAvailableDate?: string | Date;
+  preOrderStatus?: PRE_ORDER_STATUS;
+}
+
+// Price Breakdown Interface
+export interface IPriceBreakdown {
+  subtotal: number;
+  delivery_charge: number;  // $11.99, or $0 if subtotal >= $150
+  tax: number;              // 8.875% of subtotal
+  discount_amount: number;
+  total_price: number;
+}
+
+// Address Breakdown Interface
+export interface IAddressBreakdown {
+  country: string;
+  city: string;
+  postal_code: string;
+  street_address: string;
+}
+
+// Full Order Interface
+export interface IOrder {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+    contact_number?: string;
+  } | string;
+  items: IOrderItem[];
+  price_breakdown: IPriceBreakdown;
+  total_items: number;
+  formatted_address: string;
+  address_breakdown: IAddressBreakdown;
+  contact_number: string;
+  status: ORDER_STATUS;
+  payment_status: PAYMENT_STATUS;
+  order_id: string; // e.g. "ORDER-12345678"
+  payment_intent_id?: string;
+  transaction_id?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+================================================================================
+3. API ENDPOINTS SPECIFICATION
+================================================================================
+
+--------------------------------------------------------------------------------
+1) CREATE ORDER & INITIATE STRIPE PAYMENT
+--------------------------------------------------------------------------------
+- Method & Route: POST /order
+- Access: Authenticated Users (USER, VENDOR)
+- Headers: { "Authorization": "Bearer <token>", "Content-Type": "application/json" }
+- Request Body:
+  {
+    "country": "Haiti",
+    "city": "Port-au-Prince",
+    "postal_code": "HT6110",
+    "street_address": "123 Rue Capois, Apt 4B",
+    "contact_number": "+509 3700 0000"
+  }
+- Validation:
+  - `country`: string (min 2 chars)
+  - `city`: string (min 2 chars)
+  - `postal_code`: string (min 2 chars)
+  - `street_address`: string (min 5 chars)
+  - `contact_number`: string (min 8 chars)
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Order created successfully",
+    "data": "https://checkout.stripe.com/c/pay/cs_test_..."
+  }
+- Frontend Action:
+  Redirect window to returned Stripe checkout URL: `window.location.href = res.data`.
+
+--------------------------------------------------------------------------------
+2) GET ALL ORDERS (USER & ADMIN)
+--------------------------------------------------------------------------------
+- Method & Route: GET /order
+- Access: Authenticated (Users see their own paid orders; Admins see all orders)
+- Query Parameters:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (searches `order_id`, `contact_number`, `formatted_address`, `items.name`,`payment_intent_id`, `transaction_id`)
+  - `status`: "pending" | "confirmed" | "processing" | "shipped" | "delivered" | "cancelled"
+  - `payment_status`: "pending" | "paid" | "failed" | "refunded"
+  - `sort`: string (default: "-createdAt")
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Order data retrieved successfully",
+    "data": [
+      {
+        "_id": "67cb1a2b3c4d5e6f7a8b9c0d",
+        "order_id": "ORDER-98421503",
+       
+        "user": {
+          "_id": "67ca0123456789abcdef0123",
+          "name": "Jean Baptiste",
+          "email": "jean@example.com",
+          "image": "https://res.cloudinary.com/.../avatar.jpg",
+          "contact_number": "+509 3700 0000"
+        },
+        "items": [
+          {
+            "product": {
+              "_id": "67c9f0123456789abcdef045",
+              "name": "Oversized Haitian Heritage Tee",
+              "images": ["https://res.cloudinary.com/.../tee.jpg"],
+              "sold": 42
+            },
+            "name": "Oversized Haitian Heritage Tee",
+            "image": "https://res.cloudinary.com/.../tee.jpg",
+            "size": "L",
+            "color": "Forest Green",
+            "quantity": 2,
+            "price": 45.00,
+            "total_price": 90.00,
+            "isPreOrder": false
+          }
+        ],
+        "price_breakdown": {
+          "subtotal": 90.00,
+          "delivery_charge": 11.99,
+          "tax": 7.99,
+          "discount_amount": 0,
+          "total_price": 109.98
+        },
+        "payment_intent_id": "--",
+        "transaction_id": "--",
+        "total_items": 2,
+        "formatted_address": "123 Rue Capois, Apt 4B, Port-au-Prince, HT6110, Haiti",
+        "contact_number": "+509 3700 0000",
+        "status": "confirmed",
+        "payment_status": "paid",
+        "createdAt": "2026-09-05T12:00:00.000Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 1,
+      "totalPage": 1
+    }
+  }
+
+--------------------------------------------------------------------------------
+3) GET SINGLE ORDER DETAILS
+--------------------------------------------------------------------------------
+- Method & Route: GET /order/:id
+- Access: Authenticated (Customer can view their own order; Admins can view any order)
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Order retrieved successfully",
+    "data": { ...fullOrderObject }
+  }
+
+--------------------------------------------------------------------------------
+4) UPDATE ORDER STATUS (ADMIN ONLY)
+--------------------------------------------------------------------------------
+- Method & Route: PATCH /order/:id
+- Access: ADMIN, SUPER_ADMIN
+- Request Body:
+  {
+    "status": "processing" | "shipped" | "delivered" | "cancelled"
+  }
+- Behavior:
+  - Updates order status.
+  - Automatically sends in-app notification to the customer.
+  - Automatically sends status update email with color-coded badge to the customer.
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Order status updated successfully",
+    "data": { ...updatedOrderObject }
+  }
+
+--------------------------------------------------------------------------------
+5) MARK PRE-ORDER ITEM AS READY (ADMIN ONLY)
+--------------------------------------------------------------------------------
+- Method & Route: PATCH /order/pre-order-ready/:orderId/items/:itemIndex
+- Access: ADMIN, SUPER_ADMIN
+- Params:
+  - `orderId`: MongoDB _id of the Order
+  - `itemIndex`: zero-based index of the pre-order item in `order.items`
+- Behavior:
+  - Enforces FIFO fairness (verifies no older confirmed pre-order exists for that variant).
+  - Checks available inventory stock.
+  - Atomically decrements variant inventory and increments `sold`.
+  - Transitions `item.preOrderStatus` to `'ready'`.
+  - Automatically sends in-app notification to the customer.
+  - Automatically sends Pre-Order Arrival Email to the customer.
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Pre-order marked as ready successfully",
+    "data": { ...updatedOrderObject }
+  }
+
+--------------------------------------------------------------------------------
+6) DELETE ORDER (ADMIN ONLY)
+--------------------------------------------------------------------------------
+- Method & Route: DELETE /order/:id
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Order deleted successfully",
+    "data": { ...deletedOrderObject }
+  }
+
+================================================================================
+4. FRONTEND UI / UX IMPLEMENTATION GUIDE
+================================================================================
+
+--------------------------------------------------------------------------------
+A. USER WEBSITE (STOREFRONT & CUSTOMER PORTAL)
+--------------------------------------------------------------------------------
+
+1. Checkout Page (`/checkout`):
+   - Steps: 1. Contact Info, 2. Shipping Destination, 3. Payment Option (Stripe).
+   - Validation on all required fields: street address, city, postal code, country, contact phone.
+   - Live Order Summary Card displaying Products Subtotal, Delivery Fee (Free over $150, else $11.99), 8.875% Tax, and Total Due.
+   - "Proceed to Payment" button with loader, redirecting to Stripe hosted portal.
+
+2. Payment Success Page (`/payment/success?type=order`):
+   - Celebration screen with green checkmark animation.
+   - Displays "Payment Confirmed! Your order is being processed."
+   - Action buttons: "View My Orders" (`/dashboard/orders`) and "Continue Shopping" (`/shop`).
+
+3. Customer Order History (`/dashboard/orders`):
+   - Tabular or card list of all paid orders.
+   - Displays: Order Number (`#ORDER-XXXXXXXX`), Date, Items Thumbnail previews, Total Price, Status badge with theme colors:
+     - `confirmed`: emerald
+     - `processing`: blue
+     - `shipped`: indigo
+     - `delivered`: green
+     - `cancelled`: red
+   - "View Order Details" button.
+
+4. Customer Order Details Modal / Page (`/dashboard/orders/[id]`):
+   - Complete itemized receipt with product thumbnail, title, size, color, quantity, unit price, and pre-order indicator.
+   - Price breakdown box (Subtotal, Delivery Fee, Tax, Total).
+   - Shipping destination and contact phone number.
+   - Courier delivery status timeline tracker.
+
+--------------------------------------------------------------------------------
+B. ADMIN DASHBOARD (ORDER MANAGEMENT PORTAL)
+--------------------------------------------------------------------------------
+
+1. Orders Management Table (`/admin/orders`):
+   - Search bar: realtime search across Order ID, customer name, phone number, and product title.
+   - Filters:
+     - Status Filter dropdown (All, Pending, Confirmed, Processing, Shipped, Delivered, Cancelled).
+     - Payment Status Filter (Paid, Pending).
+   - Table Columns:
+     - Order ID (monospace bold link).
+     - Customer (Avatar + Name + Email).
+     - Items (Quantity + thumbnail preview of items).
+     - Total Amount ($).
+     - Order Status (colored badge).
+     - Payment Status (green 'Paid' badge).
+     - Date & Time.
+     - Actions: View Details, Change Status, Delete.
+
+2. Admin Order Details Drawer / View:
+   - Customer profile & delivery destination card with copy-to-clipboard buttons.
+   - Ordered items table with variant tags (Size, Color) and pre-order status badge.
+   - Action Button for Pre-Orders: "Mark Pre-Order Ready" (triggers `PATCH /order/pre-order-ready/:orderId/items/:itemIndex`).
+     - Shows confirmation modal indicating that stock will be decremented and customer will receive an instant arrival email.
+   - Status Change Dropdown: allows updating status to Processing, Shipped, Delivered, or Cancelled with instant customer email dispatch.
+   - Delete Order Button: triggers red confirmation dialog.
+================================================================================

@@ -15,11 +15,22 @@ router
     OrderController.createOrder,
   )
   .get(auth(), OrderController.getAllOrders);
+router.patch(
+  '/pre-order-ready/:orderId/items/:itemIndex',
+  auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  OrderController.markPreOrderReady,
+);
 router
   .route('/:id')
+  .get(auth(), OrderController.getSingleOrder)
   .patch(
-    auth(),
+    auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
     validateRequest(OrderValidations.changeOrderStatusZodSchema),
     OrderController.changeOrderStatus,
+  )
+  .delete(
+    auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+    OrderController.deleteOrder,
   );
+
 export const OrderRoutes = router;
