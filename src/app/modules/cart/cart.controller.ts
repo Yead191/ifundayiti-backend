@@ -5,10 +5,7 @@ import sendResponse from '../../../shared/sendResponse';
 import { StatusCodes } from 'http-status-codes';
 
 const addProductIntoCart = catchAsync(async (req: Request, res: Response) => {
-  const { ...data } = req.body;
-  data.user = req.user.id;
-
-  const result = await CartServices.addProductIntoCart(data);
+  const result = await CartServices.addProductIntoCart(req.user, req.body);
 
   return sendResponse(res, {
     statusCode: StatusCodes.OK,
@@ -18,29 +15,33 @@ const addProductIntoCart = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const increaseOrDecreseQuantity = catchAsync(
+const increaseOrDecreaseQuantity = catchAsync(
   async (req: Request, res: Response) => {
-    const { amount } = req.body;
-    await CartServices.increaseOrDecreseQuantity(req.params.id, amount);
+    const { quantity } = req.body;
+    const result = await CartServices.increaseOrDecreaseQuantity(
+      req.user,
+      req.params.id,
+      Number(quantity),
+    );
 
     return sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
-      message: 'Quantity increased or decreased successfully',
-      data: amount,
+      message: 'Cart quantity adjusted successfully',
+      data: result,
     });
   },
 );
 
-const deleteProductFromCart = catchAsync(
+const removeProductFromCart = catchAsync(
   async (req: Request, res: Response) => {
-    const { id } = req.body;
-    const result = await CartServices.deleteProductFromCart(id);
+    const { id } = req.params;
+    const result = await CartServices.removeProductFromCart(req.user, id);
 
-    sendResponse(res, {
+    return sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
-      message: 'Product deleted from cart successfully',
+      message: 'Product removed from cart successfully',
       data: result,
     });
   },
@@ -49,7 +50,7 @@ const deleteProductFromCart = catchAsync(
 const getCartOfUser = catchAsync(async (req: Request, res: Response) => {
   const result = await CartServices.getCartOfUser(req.user);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
     message: 'Cart fetched successfully',
@@ -57,9 +58,21 @@ const getCartOfUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const clearCart = catchAsync(async (req: Request, res: Response) => {
+  const result = await CartServices.clearCart(req.user);
+
+  return sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Cart cleared successfully',
+    data: result,
+  });
+});
+
 export const CartController = {
   addProductIntoCart,
-  increaseOrDecreseQuantity,
-  deleteProductFromCart,
+  increaseOrDecreaseQuantity,
+  removeProductFromCart,
   getCartOfUser,
+  clearCart,
 };

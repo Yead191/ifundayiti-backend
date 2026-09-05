@@ -6,22 +6,27 @@ import { CartValidations } from './cart.validation';
 
 const router = express.Router();
 
+// Cart collection routes
 router
   .route('/')
   .post(
     auth(),
-    validateRequest(CartValidations.addProductIntoCartZodSchema),
+    validateRequest(CartValidations.addToCartZodSchema),
     CartController.addProductIntoCart,
   )
   .get(auth(), CartController.getCartOfUser);
 
+// Clear entire cart
+router.route('/clear').delete(auth(), CartController.clearCart);
+
+// Adjust quantity (+1 / -1) & Remove item
 router
   .route('/:id')
   .patch(
     auth(),
-    validateRequest(CartValidations.increaseOrDecreseQuantityZodSchema),
-    CartController.increaseOrDecreseQuantity,
+    validateRequest(CartValidations.increaseOrDecreaseQuantityZodSchema),
+    CartController.increaseOrDecreaseQuantity,
   )
-  .delete(auth(), CartController.deleteProductFromCart);
+  .delete(auth(), CartController.removeProductFromCart);
 
 export const CartRoutes = router;

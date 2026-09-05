@@ -70,13 +70,7 @@ const createRegisterUserZodSchema = z.object({
       })
       .min(8, 'Password must be at least 8 characters'),
 
-    company: z.string().optional(),
-
-    interest: z
-      .string({
-        required_error: 'Please tell us what you need help with',
-      })
-      .min(2, 'Interest is required'),
+    phone: z.string().optional(),
   }),
 });
 

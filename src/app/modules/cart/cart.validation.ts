@@ -1,21 +1,29 @@
 import { z } from 'zod';
 
-const addProductIntoCartZodSchema = z.object({
+const addToCartZodSchema = z.object({
   body: z.object({
-    product: z.string({ required_error: 'Product id is required' }),
-    quantity: z.number({ required_error: 'Quantity is required' }),
+    product: z.string({ required_error: 'Product ID is required' }).trim(),
+    size: z.string({ required_error: 'Size is required' }).trim(),
+    color: z.string({ required_error: 'Color is required' }).trim(),
+    quantity: z.coerce
+      .number({ required_error: 'Quantity is required' })
+      .int('Quantity must be an integer')
+      .min(1, 'Quantity must be at least 1'),
   }),
 });
-const increaseOrDecreseQuantityZodSchema = z.object({
+
+const increaseOrDecreaseQuantityZodSchema = z.object({
   body: z.object({
-    amount: z.number({ required_error: 'Amount is required' }),
-    // params: z.object({
-    //     id: z.string({ required_error: 'Id is required' }).refine(value => /^[0-9a-fA-F]{24}$/.test(value), { message: 'Invalid id' }),
-    // })
+    quantity: z.coerce
+      .number({ required_error: 'Quantity adjustment is required' })
+      .int('Quantity must be an integer')
+      .refine(value => value === 1 || value === -1, {
+        message: 'Quantity adjustment must be either 1 or -1',
+      }),
   }),
 });
 
 export const CartValidations = {
-  addProductIntoCartZodSchema,
-  increaseOrDecreseQuantityZodSchema,
+  addToCartZodSchema,
+  increaseOrDecreaseQuantityZodSchema,
 };
