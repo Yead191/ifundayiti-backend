@@ -9,10 +9,10 @@ const calculateThePrice = (cartItems: ICart[], discountPercent: number = 0) => {
 
   // Free delivery for orders of $150 or more; $0 if cart is empty, otherwise $8
   const delivery_charge =
-    products_price > 0 && products_price < 150 ? 8 : 0;
+    products_price > 0 && products_price < 150 ? 11.99 : 0;
   const serviceFee = 0;
   const tax =
-    products_price > 0 ? Math.round(products_price * 0.07 * 100) / 100 : 0;
+    products_price > 0 ? Math.round(products_price * 0.08875 * 100) / 100 : 0;
 
   const subtotal = products_price;
   const baseTotal = subtotal + serviceFee + delivery_charge + tax;

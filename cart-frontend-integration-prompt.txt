@@ -55,7 +55,7 @@ interface IPriceBreakdown {
   subtotal: number;         // Same as products_price
   serviceFee: number;       // $0.00
   delivery_charge: number;  // $8.00 (or $0.00 if subtotal >= $150.00 or cart is empty)
-  tax: number;              // 7% of products_price
+  tax: number;              // 8.875% of products_price
   discount_amount: number;  // Applied discount (if coupon/promo active)
   total_price: number;      // Grand total: subtotal + delivery + tax - discount
 }
@@ -140,9 +140,9 @@ interface IGetCartResponse {
         "subtotal": 99.98,
         "serviceFee": 0,
         "delivery_charge": 8,
-        "tax": 7.00,
+        "tax": 8.87,
         "discount_amount": 0,
-        "total_price": 114.98
+        "total_price": 116.85
       }
     }
   }
@@ -222,7 +222,7 @@ interface IGetCartResponse {
 
 3. Order Summary & Price Breakdown Card:
    - Subtotal (`price_breakdown.subtotal`)
-   - Estimated Tax (`price_breakdown.tax` - 7%)
+   - Estimated Tax (`price_breakdown.tax` - 8.875%)
    - Shipping / Delivery Fee (`price_breakdown.delivery_charge` - $8.00, or $0 if subtotal >= $150 or cart is empty)
    - Discount (`price_breakdown.discount_amount`)
    - Grand Total (`price_breakdown.total_price`)

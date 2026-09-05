@@ -209,7 +209,7 @@ const getCartOfUser = async (user: JwtPayload) => {
   const cart = await Cart.find({ user: user.id })
     .populate({
       path: 'product',
-      select: 'name images price compareAtPrice status variants category',
+      select: 'name images price ',
     })
     .lean();
 
