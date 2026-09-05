@@ -1,0 +1,238 @@
+================================================================================
+FRONTEND INTEGRATION SPECIFICATION: SHOPPING CART MODULE
+================================================================================
+
+Target: E-Commerce Website (React / Next.js / Vue / Mobile)
+Base API Route: /cart
+Authentication: Required for all cart operations (Bearer Token in Authorization header)
+
+--------------------------------------------------------------------------------
+1. OVERVIEW & FEATURES
+--------------------------------------------------------------------------------
+The Shopping Cart module allows authenticated users to manage products they intend to purchase:
+- Add items with variant selection (Size & Color).
+- Real-time stock validation (prevents ordering more than available variant stock).
+- Increase/decrease quantity (+1 / -1) with automatic item removal when decrementing past 1.
+- Remove individual items from cart.
+- Clear entire cart.
+- Fetch cart items with item-level total price and complete price breakdown (subtotal, shipping, 7% tax, discount, grand total).
+
+--------------------------------------------------------------------------------
+2. DATA STRUCTURES & TYPES
+--------------------------------------------------------------------------------
+
+interface ICartProduct {
+  _id: string;
+  name: string;
+  images: string[];
+  price: number;
+  compareAtPrice?: number;
+  status: 'active' | 'inactive' | 'archived';
+  category: string;
+  variants: {
+    size: string;
+    color: string;
+    stock: number;
+    isPreOrder: boolean;
+  }[];
+}
+
+interface ICartItem {
+  _id: string;
+  user: string;
+  product: ICartProduct;
+  size: string;
+  color: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface IPriceBreakdown {
+  products_price: number;   // Raw sum of unit_price * quantity
+  subtotal: number;         // Same as products_price
+  serviceFee: number;       // $0.00
+  delivery_charge: number;  // $8.00 (or $0.00 if subtotal >= $150.00 or cart is empty)
+  tax: number;              // 7% of products_price
+  discount_amount: number;  // Applied discount (if coupon/promo active)
+  total_price: number;      // Grand total: subtotal + delivery + tax - discount
+}
+
+interface IGetCartResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: {
+    cart: ICartItem[];
+    price_breakdown: IPriceBreakdown;
+  };
+}
+
+--------------------------------------------------------------------------------
+3. API ENDPOINTS & INTEGRATION DETAILS
+--------------------------------------------------------------------------------
+
+### 1) Add Product to Cart
+- Endpoint: POST /cart
+- Request Body:
+  {
+    "product": "65b1c2d3e4f5a6b7c8d9e0f1",
+    "size": "M",
+    "color": "Navy Blue",
+    "quantity": 2
+  }
+- Behavior:
+  - Validates product active status and variant stock.
+  - If user already has the same variant (product + size + color) in cart, it automatically increments the existing cart item's quantity and updates total_price.
+- Success Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Product added to cart successfully",
+    "data": {
+      "_id": "67cb1a2b3c4d5e6f7a8b9c0d",
+      "user": "67ca0123456789abcdef0123",
+      "product": "65b1c2d3e4f5a6b7c8d9e0f1",
+      "size": "M",
+      "color": "Navy Blue",
+      "quantity": 2,
+      "unit_price": 49.99,
+      "total_price": 99.98
+    }
+  }
+
+---
+
+### 2) Get User Cart & Price Breakdown
+- Endpoint: GET /cart
+- Success Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Cart fetched successfully",
+    "data": {
+      "cart": [
+        {
+          "_id": "67cb1a2b3c4d5e6f7a8b9c0d",
+          "user": "67ca0123456789abcdef0123",
+          "product": {
+            "_id": "67c9f0123456789abcdef045",
+            "name": "Classic Oxford Cotton Shirt",
+            "images": [
+              "https://res.cloudinary.com/.../shirt-front.jpg",
+              "https://res.cloudinary.com/.../shirt-back.jpg"
+            ],
+            "price": 49.99,
+            "compareAtPrice": 69.99,
+            "status": "active"
+          },
+          "size": "M",
+          "color": "Navy Blue",
+          "quantity": 2,
+          "unit_price": 49.99,
+          "total_price": 99.98
+        }
+      ],
+      "price_breakdown": {
+        "products_price": 99.98,
+        "subtotal": 99.98,
+        "serviceFee": 0,
+        "delivery_charge": 8,
+        "tax": 7.00,
+        "discount_amount": 0,
+        "total_price": 114.98
+      }
+    }
+  }
+
+---
+
+### 3) Increase or Decrease Quantity (+1 / -1)
+- Endpoint: PATCH /cart/:id
+- Request Body (To Increase by 1):
+  {
+    "quantity": 1
+  }
+- Request Body (To Decrease by 1):
+  {
+    "quantity": -1
+  }
+- Behavior:
+  - Passing quantity: 1 verifies available stock for that variant and increments quantity by 1.
+  - Passing quantity: -1 decrements quantity by 1. If quantity is currently 1 and decremented by -1, the item is automatically removed from the cart.
+  - Automatically recalculates and saves total_price for the item.
+- Success Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Cart quantity adjusted successfully",
+    "data": {
+      "_id": "67cb1a2b3c4d5e6f7a8b9c0d",
+      "quantity": 3,
+      "unit_price": 49.99,
+      "total_price": 149.97
+    }
+  }
+
+---
+
+### 4) Remove Single Item From Cart
+- Endpoint: DELETE /cart/:id
+- Success Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Product removed from cart successfully",
+    "data": null
+  }
+
+---
+
+### 5) Clear Entire Cart
+- Endpoint: DELETE /cart/clear
+- Success Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Cart cleared successfully",
+    "data": null
+  }
+
+--------------------------------------------------------------------------------
+4. FRONTEND UI / UX REQUIREMENTS
+--------------------------------------------------------------------------------
+
+1. Cart Drawer / Slide-Over & Dedicated Cart Page:
+   - Floating Cart Icon in navbar with badge showing total count of items:
+     `cart.reduce((sum, item) => sum + item.quantity, 0)`
+   - Clicking opens mini-cart drawer or navigates to `/cart`.
+
+2. Cart Item Card Display:
+   - Product Thumbnail image (first image from `product.images`).
+   - Product Title.
+   - Selected Variant info: Size badge (e.g., "Size: M") and Color swatch / name (e.g., "Color: Navy Blue").
+   - Unit price ($49.99) and Item Total Price ($99.98).
+   - Quantity Stepper:
+     - Minus (-) button: triggers `PATCH /cart/:id` with `{ "quantity": -1 }`. If quantity is 1, optionally show trash/delete icon.
+     - Quantity Display: integer value.
+     - Plus (+) button: triggers `PATCH /cart/:id` with `{ "quantity": 1 }`. Disable button if stock limit reached.
+   - Delete/Remove button: triggers `DELETE /cart/:id`.
+
+3. Order Summary & Price Breakdown Card:
+   - Subtotal (`price_breakdown.subtotal`)
+   - Estimated Tax (`price_breakdown.tax` - 7%)
+   - Shipping / Delivery Fee (`price_breakdown.delivery_charge` - $8.00, or $0 if subtotal >= $150 or cart is empty)
+   - Discount (`price_breakdown.discount_amount`)
+   - Grand Total (`price_breakdown.total_price`)
+   - "Proceed to Checkout" button (navigates to `/checkout`, disabled if cart is empty).
+   - "Clear Cart" button (triggers `DELETE /cart/clear` with confirmation modal).
+
+4. Empty State:
+   - Friendly empty cart illustration, "Your cart is empty" message, and "Continue Shopping" button.
+
+5. Optimistic UI / Loading States:
+   - Disable +/- buttons during active network requests to avoid rapid duplicate clicks.
+   - Display toast notifications on Add to Cart, Remove Item, and Errors (e.g., "Out of stock", "Max available stock reached").
+================================================================================
