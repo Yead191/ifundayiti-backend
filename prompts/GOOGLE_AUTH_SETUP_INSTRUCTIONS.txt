@@ -1,0 +1,294 @@
+================================================================================
+           IFUNDAYITI - GOOGLE AUTHENTICATION INTEGRATION GUIDE
+================================================================================
+
+This document contains:
+1. Summary of backend changes made previously.
+2. Step-by-step instructions to obtain your GOOGLE_CLIENT_ID from Google Cloud.
+3. Complete copy-paste prompt & code instructions for your frontend.
+
+================================================================================
+1. SUMMARY OF BACKEND CHANGES MADE
+================================================================================
+
+1. Installed Dependency:
+   - "google-auth-library": Official Google SDK to verify JWT ID tokens locally.
+
+2. Configuration:
+   - [.env]: Added GOOGLE_CLIENT_ID=
+   - [src/config/index.ts]: Added `google: { client_id: process.env.GOOGLE_CLIENT_ID }`
+
+3. User Model & Schema:
+   - [src/app/modules/user/user.interface.ts]:
+     * Made `password?: string` optional on IUser (Google users have no initial password).
+     * Added `googleId?: string` and `authType?: 'credentials' | 'google'`.
+   - [src/app/modules/user/user.model.ts]:
+     * Added `googleId` and `authType` schema fields.
+     * Updated `userSchema.pre('save')`:
+       - Checks for existing email only for new documents (`this.isNew`), fixing an issue where updating an existing user threw a false "Email already exist!" error.
+       - Hashes password only if `this.isModified('password') && this.password`.
+
+4. Auth Service & Controller:
+   - [src/app/modules/auth/auth.service.ts]:
+     * Created `loginWithGoogleToDB(idToken: string)`:
+       a) Verifies the ID token with Google Cloud OAuth client.
+       b) Extracts verified email, name, avatar picture, and googleId.
+       c) If user exists: checks if blocked; links googleId and marks verified: true.
+       d) If new user: creates user (role: USER, status: 'active', verified: true, authType: 'google').
+       e) Sends the official Welcome Email (`emailTemplate.welcomeAccount`) to new users.
+       f) Generates and returns standard application JWT `{ createToken }`.
+     * Added guards in `loginUserFromDB` and `changePasswordToDB` informing users registered via Google to sign in with Google or use forgot password if no password is set.
+   - [src/app/modules/auth/auth.validation.ts]:
+     * Added `googleLoginZodSchema` checking for `{ idToken: string }`.
+   - [src/app/modules/auth/auth.controller.ts]:
+     * Added `loginWithGoogle` controller action.
+   - [src/app/modules/auth/auth.route.ts]:
+     * Added route: `POST /api/v1/auth/google-login`
+
+================================================================================
+2. HOW TO GET THE GOOGLE_CLIENT_ID FROM GOOGLE CLOUD
+================================================================================
+
+Follow these steps:
+
+Step 1: Go to Google Cloud Console
+- Open your browser and navigate to: https://console.cloud.google.com/
+- Sign in with your Google account.
+
+Step 2: Create or Select a Project
+- At the top bar, click the project dropdown.
+- Click "NEW PROJECT".
+- Project name: "IFundAyiti" (or select your existing project).
+- Click "CREATE".
+
+Step 3: Configure the OAuth Consent Screen
+- In the left sidebar, go to "APIs & Services" > "OAuth consent screen".
+- User Type: Select "External" and click "CREATE".
+- App Information:
+  * App name: "IFundAyiti"
+  * User support email: Select your email (e.g. yead.sparktech@gmail.com).
+  * Developer contact information: Enter your email.
+- Click "SAVE AND CONTINUE".
+- Scopes: Click "SAVE AND CONTINUE" (default email, profile, openid are included).
+- Test Users (if in Testing mode):
+  * Add the Google emails you will use for testing (e.g. yead19@gmail.com, yead.sparktech@gmail.com).
+  * (Later, you can click "Publish App" to make it live for all users).
+- Click "SAVE AND CONTINUE" and "BACK TO DASHBOARD".
+
+Step 4: Create OAuth 2.0 Client ID
+- In the left sidebar, click "Credentials".
+- Click "+ CREATE CREDENTIALS" at the top and select "OAuth client ID".
+- Application type: Select "Web application".
+- Name: "IFundAyiti Web Client"
+- Authorized JavaScript origins (Crucial for frontend popups):
+  Click "+ ADD URI" and add:
+  * http://localhost:3000
+  * http://localhost:5004
+  * https://ifundayiti.org (your production domain)
+  * https://www.ifundayiti.org
+- Authorized redirect URIs:
+  Click "+ ADD URI" and add:
+  * http://localhost:3000
+  * https://ifundayiti.org
+- Click "CREATE".
+
+Step 5: Copy Your Client ID
+- A modal will pop up with your "Client ID" (it looks like:
+  `1234567890-abcdefg12345678.apps.googleusercontent.com`).
+- Copy this Client ID!
+
+Step 6: Put the Client ID in your Backend and Frontend `.env`
+- Backend `.env`:
+  GOOGLE_CLIENT_ID=911317811111-uhs3mivpijfvscdncmvbm75hvchlen9e.apps.googleusercontent.com
+
+
+================================================================================
+3. COPY-PASTE PROMPT FOR YOUR FRONTEND (NEXT.JS)
+================================================================================
+
+Copy everything below the line and paste it to your AI agent or use it to build your frontend integration:
+
+--------------------------------------------------------------------------------
+PROMPT FOR FRONTEND:
+--------------------------------------------------------------------------------
+
+- Frontend `.env.local`:
+  NEXT_PUBLIC_GOOGLE_CLIENT_ID=911317811111-uhs3mivpijfvscdncmvbm75hvchlen9e.apps.googleusercontent.com 
+
+Please implement Google Sign-In on the IFundAyiti Next.js frontend to work with our backend endpoint `POST /api/v1/auth/google-login`.
+
+### Background & API Specification:
+The backend provides a Google login endpoint:
+- Endpoint: `POST /api/v1/auth/google-login`
+- Body:
+  ```json
+  {
+    "idToken": "<google_credential_id_token>"
+  }
+  ```
+- Success Response:
+  ```json
+  {
+    "success": true,
+    "statusCode": 200,
+    "message": "User logged in successfully with Google.",
+    "data": {
+      "createToken": "<jwt_token>"
+    }
+  }
+  ```
+The backend automatically:
+- Links existing users by email.
+- Creates new users with `role: "USER"`, `verified: true`, and sends them the official Welcome Email.
+- Returns standard JWT `createToken`, exactly like the existing email/password login endpoint.
+
+### Recommended Implementation Steps:
+
+1. Install Google OAuth library on the frontend:
+   ```bash
+   npm install @react-oauth/google
+   ```
+
+2. Add the environment variable in `ifundayiti-frontend/.env.local`:
+   ```env
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+   ```
+
+3. Wrap the application or Auth pages with `GoogleOAuthProvider`:
+   In `src/app/providers.tsx` (or your root layout/providers wrapper):
+   ```tsx
+   import { GoogleOAuthProvider } from '@react-oauth/google';
+
+   export function Providers({ children }: { children: React.ReactNode }) {
+     const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '';
+
+     return (
+       <GoogleOAuthProvider clientId={googleClientId}>
+         {children}
+       </GoogleOAuthProvider>
+     );
+   }
+   ```
+
+4. Create the Google Login Action / Helper:
+   In `src/helpers/next-fetch/authActions.ts` (or your auth actions file):
+   ```ts
+   export async function loginWithGoogle(idToken: string) {
+     const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5004/api/v1'}/auth/google-login`, {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+       },
+       body: JSON.stringify({ idToken }),
+     });
+     return res.json();
+   }
+   ```
+
+5. Add Google Sign-In Button on Login / Register pages:
+   Example component using custom styled button with `useGoogleLogin`:
+   ```tsx
+   "use client";
+
+   import React, { useState } from "react";
+   import { useGoogleLogin } from "@react-oauth/google";
+   import { useRouter } from "next/navigation";
+   import { toast } from "sonner";
+   import Cookies from "js-cookie"; // or your existing token storage method
+
+   export function GoogleSignInButton() {
+     const router = useRouter();
+     const [loading, setLoading] = useState(false);
+
+     const handleGoogleAuth = useGoogleLogin({
+       flow: "implicit", // or use credential response
+       onSuccess: async (tokenResponse) => {
+         setLoading(true);
+         try {
+           // If using Google Identity Services credential (ID token):
+           // Call backend:
+           const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/google-login`, {
+             method: "POST",
+             headers: { "Content-Type": "application/json" },
+             body: JSON.stringify({ idToken: tokenResponse.access_token || tokenResponse.id_token }),
+           });
+           const data = await res.json();
+
+           if (data.success && data.data?.createToken) {
+             Cookies.set("accessToken", data.data.createToken);
+             toast.success("Signed in with Google successfully!");
+             router.push("/dashboard");
+             router.refresh();
+           } else {
+             toast.error(data.message || "Google sign-in failed");
+           }
+         } catch (err) {
+           toast.error("Network error during Google sign-in");
+         } finally {
+           setLoading(false);
+         }
+       },
+       onError: () => {
+         toast.error("Google login was cancelled or failed");
+       },
+     });
+
+     return (
+       <button
+         type="button"
+         onClick={() => handleGoogleAuth()}
+         disabled={loading}
+         className="flex w-full items-center justify-center gap-3 rounded-xl border border-hairline bg-white/80 px-4 py-3 text-sm font-semibold text-forest-deep shadow-sm transition hover:bg-white hover:border-forest/30"
+       >
+         <svg className="h-5 w-5" viewBox="0 0 24 24">
+           <path
+             fill="#4285F4"
+             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+           />
+           <path
+             fill="#34A853"
+             d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+           />
+           <path
+             fill="#FBBC05"
+             d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+           />
+           <path
+             fill="#EA4335"
+             d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+           />
+         </svg>
+         <span>{loading ? "Signing in…" : "Continue with Google"}</span>
+       </button>
+     );
+   }
+   ```
+
+   Alternatively, using the official pre-built `GoogleLogin` component:
+   ```tsx
+   import { GoogleLogin } from "@react-oauth/google";
+
+   <GoogleLogin
+     onSuccess={async (credentialResponse) => {
+       if (credentialResponse.credential) {
+         // credentialResponse.credential is the ID token string!
+         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/auth/google-login`, {
+           method: "POST",
+           headers: { "Content-Type": "application/json" },
+           body: JSON.stringify({ idToken: credentialResponse.credential }),
+         });
+         const data = await res.json();
+         if (data.success) {
+           Cookies.set("accessToken", data.data.createToken);
+           router.push("/dashboard");
+         }
+       }
+     }}
+     onError={() => toast.error("Google Sign-In failed")}
+     shape="pill"
+     theme="outline"
+   />
+   ```
+
+Ensure you save the returned `createToken` the same way your regular login flow does (e.g. cookie or localStorage) so the user session is active immediately.
+--------------------------------------------------------------------------------

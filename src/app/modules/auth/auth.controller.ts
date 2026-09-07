@@ -95,15 +95,28 @@ const registerVendor = catchAsync(async (req: Request, res: Response, next: Next
     statusCode: StatusCodes.OK,
     message: 'Your registration was successful. Please check your email for the verification OTP.',
     data: result,
-  })
+  });
+});
 
-})
+const loginWithGoogle = catchAsync(async (req: Request, res: Response) => {
+  const { idToken } = req.body;
+  const result = await AuthService.loginWithGoogleToDB(idToken);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'User logged in successfully with Google.',
+    data: result,
+  });
+});
+
 export const AuthController = {
   verifyEmail,
   loginUser,
+  loginWithGoogle,
   forgetPassword,
   resetPassword,
   changePassword,
   registerUser,
-  registerVendor
+  registerVendor,
 };

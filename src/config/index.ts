@@ -48,6 +48,9 @@ export default {
   elasticSearch: {
     url: process.env.ELASTICSEARCH_URL,
   },
+  google: {
+    client_id: process.env.GOOGLE_CLIENT_ID,
+  },
   support: {
     order: process.env.ORDER_SUPPORT_EMAIL,
     admin: process.env.ADMIN_SUPPORT,

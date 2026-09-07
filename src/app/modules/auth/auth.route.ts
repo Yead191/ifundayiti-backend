@@ -14,6 +14,12 @@ router.post(
 );
 
 router.post(
+  '/google-login',
+  validateRequest(AuthValidation.googleLoginZodSchema),
+  AuthController.loginWithGoogle,
+);
+
+router.post(
   '/forget-password',
   validateRequest(AuthValidation.createForgetPasswordZodSchema),
   AuthController.forgetPassword,

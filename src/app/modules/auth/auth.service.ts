@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { StatusCodes } from 'http-status-codes';
 import { JwtPayload, Secret } from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import config from '../../../config';
 import ApiError from '../../../errors/ApiError';
 import { emailHelper } from '../../../helpers/emailHelper';
@@ -23,6 +24,8 @@ import { AuthHelper } from './auth.helper';
 import { USER_ROLES } from '../../../enums/user';
 import unlinkFile from '../../../shared/unlinkFile';
 import { NotificationServices } from '../notification/notification.service';
+
+const googleClient = new OAuth2Client(config.google?.client_id);
 
 //login
 const loginUserFromDB = async (payload: ILoginData, res: Response) => {
@@ -60,6 +63,13 @@ const loginUserFromDB = async (payload: ILoginData, res: Response) => {
 
   if (!password) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Password is required!');
+  }
+
+  if (!isExistUser.password) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'This account was registered using Google. Please sign in with Google or use forgot password to set a password.',
+    );
   }
 
   //check match password
@@ -245,6 +255,13 @@ const changePasswordToDB = async (
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
   }
 
+  if (!isExistUser.password) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'This account was registered using Google and does not have a password set. Please use forgot password to create a password.',
+    );
+  }
+
   //current password match
   if (
     currentPassword &&
@@ -410,9 +427,121 @@ const registerVendorToDB = async (payload: any, res: Response) => {
   }
 };
 
+const loginWithGoogleToDB = async (idToken: string) => {
+  if (!idToken) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Google ID token is required!');
+  }
+
+  // 1. Verify token with Google
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: config.google?.client_id,
+    });
+    payload = ticket.getPayload();
+  } catch (error) {
+    throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid Google token!');
+  }
+
+  if (!payload || !payload.email) {
+    throw new ApiError(
+      StatusCodes.UNAUTHORIZED,
+      'Google authentication failed: Email not found!',
+    );
+  }
+
+  const { email, name, picture, sub: googleId } = payload;
+  const normalizedEmail = email.toLowerCase();
+
+  // 2. Check if user exists
+  let isExistUser = await User.findOne({ email: normalizedEmail });
+
+  if (isExistUser) {
+    // Check if account is blocked
+    if (isExistUser.status === 'blocked') {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Your account has been blocked. Please contact support/administrator for further assistance.',
+      );
+    }
+
+    // Link googleId or update avatar / verified if needed
+    let isModified = false;
+    if (!isExistUser.googleId) {
+      isExistUser.googleId = googleId;
+      isModified = true;
+    }
+    if (!isExistUser.verified) {
+      isExistUser.verified = true;
+      isModified = true;
+    }
+    if (picture && (!isExistUser.image || isExistUser.image.includes('profile.png'))) {
+      isExistUser.image = picture;
+      isModified = true;
+    }
+    if (isModified) {
+      await isExistUser.save();
+    }
+  } else {
+    // 3. New User Registration via Google
+    isExistUser = await User.create({
+      name: name || 'Google User',
+      email: normalizedEmail,
+      image: picture || 'https://i.ibb.co/z5YHLV9/profile.png',
+      role: USER_ROLES.USER,
+      status: 'active',
+      verified: true, // Google accounts are verified by Google
+      authType: 'google',
+      googleId,
+    });
+
+    if (!isExistUser) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Failed to create user with Google',
+      );
+    }
+
+    // Notify admins
+    NotificationServices.sendNotificationToAdmins({
+      title: 'New User Registration (Google)',
+      message: `${isExistUser.name} has registered using Google`,
+      refId: isExistUser._id,
+      path: `/user/${isExistUser._id}`,
+    });
+
+    // 4. Send Welcome Email to newly registered user
+    try {
+      const welcomeEmailData = emailTemplate.welcomeAccount({
+        email: isExistUser.email,
+        name: isExistUser.name || 'User',
+      });
+      await emailHelper.sendEmail(welcomeEmailData);
+    } catch (emailErr) {
+      console.error('Failed to send welcome email to Google user:', emailErr);
+    }
+  }
+
+  // 5. Generate JWT Token
+  const createToken = jwtHelper.createToken(
+    {
+      id: isExistUser._id,
+      role: isExistUser.role,
+      email: isExistUser.email,
+      name: isExistUser.name,
+    },
+    config.jwt.jwt_secret as Secret,
+    config.jwt.jwt_expire_in as string,
+  );
+
+  return { createToken };
+};
+
 export const AuthService = {
   verifyEmailToDB,
   loginUserFromDB,
+  loginWithGoogleToDB,
   forgetPasswordToDB,
   resetPasswordToDB,
   changePasswordToDB,

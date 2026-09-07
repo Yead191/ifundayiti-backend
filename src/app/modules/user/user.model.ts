@@ -48,6 +48,16 @@ const userSchema = new Schema<IUser, UserModal>(
       default: false,
     },
 
+    googleId: {
+      type: String,
+      default: null,
+    },
+    authType: {
+      type: String,
+      enum: ['credentials', 'google'],
+      default: 'credentials',
+    },
+
     subscription: {
       type: Schema.Types.ObjectId,
       ref: 'Subscription',
@@ -94,17 +104,21 @@ userSchema.statics.isMatchPassword = async (
 
 //check user
 userSchema.pre('save', async function (this: any, next) {
-  //check user
-  const isExist = await User.findOne({ email: this.email });
-  if (isExist) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already exist!');
+  //check user only for new records
+  if (this.isNew) {
+    const isExist = await User.findOne({ email: this.email });
+    if (isExist) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email already exist!');
+    }
   }
 
-  //password hash
-  this.password = await bcrypt.hash(
-    this.password,
-    Number(config.bcrypt_salt_rounds),
-  );
+  //password hash only if present and modified
+  if (this.isModified('password') && this.password) {
+    this.password = await bcrypt.hash(
+      this.password,
+      Number(config.bcrypt_salt_rounds),
+    );
+  }
   next();
 });
 

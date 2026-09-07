@@ -168,6 +168,14 @@ export const developerProfileSchema = z.object({
   applicationStatus: z.enum(['pending', 'approved', 'rejected']).optional(),
 });
 
+const googleLoginZodSchema = z.object({
+  body: z.object({
+    idToken: z.string({
+      required_error: 'Google ID token is required',
+    }),
+  }),
+});
+
 export const AuthValidation = {
   createVerifyEmailZodSchema,
   createForgetPasswordZodSchema,
@@ -176,4 +184,5 @@ export const AuthValidation = {
   createChangePasswordZodSchema,
   createRegisterVendorZodSchema,
   createRegisterUserZodSchema,
+  googleLoginZodSchema,
 };
