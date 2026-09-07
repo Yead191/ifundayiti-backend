@@ -10,6 +10,69 @@ const getLogoUrl = () => {
   return 'https://res.cloudinary.com/dknmebeee/image/upload/v1787648884/ifundayiti-logo_pxyeoe.png';
 };
 
+/**
+ * Mobile-responsive, cross-client HTML email wrapper.
+ * Ensures the email container is strictly centered with max-width: 600px,
+ * handles viewport scaling on mobile devices (including Gmail Android/iOS),
+ * and prevents horizontal overflow issues.
+ */
+const emailWrapper = (
+  innerRows: string,
+) => `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <title>IFundAyiti</title>
+  <style type="text/css">
+    body, table, td, p, a, li, blockquote {
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+    table, td {
+      mso-table-lspace: 0pt;
+      mso-table-rspace: 0pt;
+    }
+    img {
+      -ms-interpolation-mode: bicubic;
+      border: 0;
+      height: auto;
+      line-height: 100%;
+      outline: none;
+      text-decoration: none;
+    }
+    @media only screen and (max-width: 600px) {
+      .email-container {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      .mobile-padding {
+        padding: 24px 16px 20px 16px !important;
+      }
+      .mobile-header-padding {
+        padding: 28px 16px !important;
+      }
+      .mobile-card-padding {
+        padding: 14px 12px !important;
+      }
+    }
+  </style>
+</head>
+<body style="margin: 0 !important; padding: 0 !important; background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b; -webkit-font-smoothing: antialiased; width: 100% !important; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; background-color: #f8fafc; margin: 0 auto; table-layout: fixed;">
+    <tr>
+      <td align="center" style="padding: 20px 8px;">
+        <table role="presentation" class="email-container" width="100%" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(5, 40, 29, 0.08); border: 1px solid #e2e8f0; margin: 0 auto;">
+          ${innerRows}
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
 export const orderConfirmation = (values: IOrderConfirmation) => {
   const logoUrl = getLogoUrl();
   const subtotal =
@@ -23,7 +86,10 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
     .map(item => {
       const title = item.name || item.title || 'Apparel Item';
       const variantDesc = [item.size, item.color].filter(Boolean).join(' / ');
-      const unitPrice = item.price ?? item.unit_price ?? (item.total_price / (item.quantity || 1));
+      const unitPrice =
+        item.price ??
+        item.unit_price ??
+        item.total_price / (item.quantity || 1);
 
       return `
     <tr>
@@ -63,17 +129,11 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
   return {
     to: values.email,
     subject: `Order Confirmation #${values.orderId} - IFundAyiti`,
-    html: `
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 32px 12px; color: #1e293b; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(5, 40, 29, 0.08); border: 1px solid #e2e8f0; margin: 0 auto;">
-          
+    html: emailWrapper(`
           <!-- Header Banner -->
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 36px 24px; text-align: center;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
+            <td align="center" class="mobile-header-padding" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 36px 24px; text-align: center;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
               <div style="margin-top: 14px;">
                 <span style="display: inline-block; background-color: rgba(237, 224, 203, 0.2); border: 1px solid rgba(237, 224, 203, 0.4); color: #ede0cb; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 14px; border-radius: 50px;">
                   Order Confirmed
@@ -84,7 +144,7 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
 
           <!-- Main Content -->
           <tr>
-            <td style="padding: 36px 32px 28px 32px;">
+            <td class="mobile-padding" style="padding: 28px 24px 24px 24px;">
               <h1 style="color: #05281d; font-size: 22px; font-weight: 800; margin: 0 0 10px 0; text-align: center; letter-spacing: -0.5px;">
                 Thank You for Your Order!
               </h1>
@@ -93,17 +153,17 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
               </p>
 
               <!-- Order Overview Card -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
+              <div class="mobile-card-padding" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; word-break: break-word;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #334155;">
                   <tr>
                     <td style="font-weight: 600; color: #64748b; width: 40%;">Order Number:</td>
-                    <td style="font-family: monospace; font-weight: 700; color: #05281d;">#${values.orderId}</td>
+                    <td style="font-family: monospace; font-weight: 700; color: #05281d; word-break: break-all;">#${values.orderId}</td>
                   </tr>
                   ${
                     values.transactionId
                       ? `<tr>
                           <td style="font-weight: 600; color: #64748b;">Transaction:</td>
-                          <td style="font-family: monospace; color: #475569;">${values.transactionId}</td>
+                          <td style="font-family: monospace; color: #475569; word-break: break-all;">${values.transactionId}</td>
                         </tr>`
                       : ''
                   }
@@ -124,7 +184,7 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
 
               <!-- Items Table -->
               <div style="margin-bottom: 24px;">
-                <div style="border-bottom: 2px solid #05281d; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="border-bottom: 2px solid #05281d; padding-bottom: 8px; margin-bottom: 12px;">
                   <span style="font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #05281d;">
                     Items Ordered
                   </span>
@@ -144,7 +204,7 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
               </div>
 
               <!-- Price Breakdown Card -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 28px;">
+              <div class="mobile-card-padding" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 28px; word-break: break-word;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="5" style="font-size: 13px; color: #475569;">
                   <tr>
                     <td style="font-weight: 500;">Products Subtotal:</td>
@@ -154,7 +214,8 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
                     <td style="font-weight: 500;">Delivery Charge:</td>
                     <td align="right" style="font-weight: 600; color: #05281d;">
                       ${
-                        values.deliveryCharge !== undefined && values.deliveryCharge > 0
+                        values.deliveryCharge !== undefined &&
+                        values.deliveryCharge > 0
                           ? `$${Number(values.deliveryCharge).toFixed(2)}`
                           : '<strong style="color: #059669;">Free</strong>'
                       }
@@ -188,7 +249,7 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
                     <td style="font-size: 15px; font-weight: 800; color: #05281d; padding-top: 12px; border-top: 2px solid #e2e8f0;">
                       Total Paid:
                     </td>
-                    <td align="right" style="font-size: 18px; font-weight: 800; color: #05281d; padding-top: 12px; border-top: 2px solid #e2e8f0;">
+                    <td align="right" style="font-size: 12px; font-weight: 800; color: #05281d; padding-top: 12px; border-top: 2px solid #e2e8f0;">
                       $${Number(values.totalPrice).toFixed(2)}
                     </td>
                   </tr>
@@ -223,13 +284,7 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
               </p>
             </td>
           </tr>
-
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-    `,
+    `),
   };
 };
 
@@ -289,16 +344,11 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
   return {
     to: values.adminEmail,
     subject: `[New Store Order] #${values.orderId} - $${Number(values.totalPrice).toFixed(2)} (${values.customerName})`,
-    html: `
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 32px 12px; color: #1e293b; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(5, 40, 29, 0.08); border: 1px solid #e2e8f0; margin: 0 auto;">
+    html: emailWrapper(`
           <!-- Header Banner -->
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 32px 24px; text-align: center;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 160px; height: auto; margin: 0 auto;" />
+            <td align="center" class="mobile-header-padding" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 32px 24px; text-align: center;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
               <div style="margin-top: 12px;">
                 <span style="display: inline-block; background-color: rgba(237, 224, 203, 0.2); border: 1px solid rgba(237, 224, 203, 0.4); color: #ede0cb; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 14px; border-radius: 50px;">
                   New Order Notification
@@ -309,23 +359,20 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
 
           <!-- Body Content -->
           <tr>
-            <td style="padding: 32px 30px 24px 30px;">
+            <td class="mobile-padding" style="padding: 28px 24px 24px 24px;">
               <h1 style="color: #05281d; font-size: 20px; font-weight: 800; margin: 0 0 8px 0; text-align: center;">
                 New Order Received 🛒
               </h1>
               <p style="font-size: 14px; line-height: 1.6; color: #64748b; margin: 0 0 20px 0; text-align: center;">
-                Hello <strong>${values.adminName}</strong>, a new order has been paid and confirmed on the platform.
+                Hello <strong>${values.adminName || 'Admin'}</strong>, a customer has completed a new order on IFundAyiti Apparel.
               </p>
 
-              <!-- Customer & Order Summary Card -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
-                <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: #05281d; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; margin-bottom: 12px;">
-                  Customer & Shipping Information
-                </div>
+              <!-- Order Overview Card -->
+              <div class="mobile-card-padding" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; word-break: break-word;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #334155;">
                   <tr>
                     <td style="font-weight: 600; color: #64748b; width: 38%;">Order ID:</td>
-                    <td style="font-family: monospace; font-weight: 700; color: #05281d;">#${values.orderId}</td>
+                    <td style="font-family: monospace; font-weight: 700; color: #05281d; word-break: break-all;">#${values.orderId}</td>
                   </tr>
                   <tr>
                     <td style="font-weight: 600; color: #64748b;">Customer Name:</td>
@@ -333,7 +380,7 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
                   </tr>
                   <tr>
                     <td style="font-weight: 600; color: #64748b;">Customer Email:</td>
-                    <td style="color: #05281d;">${values.customerEmail}</td>
+                    <td style="color: #05281d; word-break: break-all;">${values.customerEmail}</td>
                   </tr>
                   ${
                     values.customerPhone
@@ -347,7 +394,7 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
                     values.transactionId
                       ? `<tr>
                           <td style="font-weight: 600; color: #64748b;">Transaction ID:</td>
-                          <td style="font-family: monospace; color: #475569;">${values.transactionId}</td>
+                          <td style="font-family: monospace; color: #475569; word-break: break-all;">${values.transactionId}</td>
                         </tr>`
                       : ''
                   }
@@ -380,7 +427,7 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
               </div>
 
               <!-- Price Breakdown Card -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
+              <div class="mobile-card-padding" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; word-break: break-word;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #475569;">
                   <tr>
                     <td style="font-weight: 500;">Items Subtotal:</td>
@@ -390,7 +437,8 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
                     <td style="font-weight: 500;">Delivery Fee:</td>
                     <td align="right" style="font-weight: 600; color: #05281d;">
                       ${
-                        values.deliveryCharge !== undefined && values.deliveryCharge > 0
+                        values.deliveryCharge !== undefined &&
+                        values.deliveryCharge > 0
                           ? `$${Number(values.deliveryCharge).toFixed(2)}`
                           : '<strong style="color: #059669;">Free</strong>'
                       }
@@ -433,7 +481,7 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
 
               <p style="font-size: 13px; line-height: 1.6; color: #64748b; margin: 0;">
                 Best regards,<br />
-                <strong style="color: #05281d;">IFundAyiti System Notification</strong>
+                <strong style="color: #05281d;">IFundAyiti System</strong>
               </p>
             </td>
           </tr>
@@ -441,17 +489,12 @@ export const adminOrderNotification = (values: IAdminOrderNotification) => {
           <!-- Footer -->
           <tr>
             <td align="center" style="background-color: #f8fafc; padding: 20px; border-top: 1px solid #e2e8f0; text-align: center;">
-              <p style="font-size: 11px; color: #94a3b8; margin: 0;">
+              <p style="font-size: 11px; color: #94a3b8; margin: 0; line-height: 1.5;">
                 This is an automated administrative alert from IFundAyiti.
               </p>
             </td>
           </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-    `,
+    `),
   };
 };
 
@@ -462,7 +505,11 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
   let badgeBg = '#dbeafe';
   let badgeText = '#1e40af';
 
-  if (statusUpper.includes('DELIVER') || statusUpper.includes('SUCCESS') || statusUpper.includes('CONFIRM')) {
+  if (
+    statusUpper.includes('DELIVER') ||
+    statusUpper.includes('SUCCESS') ||
+    statusUpper.includes('CONFIRM')
+  ) {
     badgeBg = '#d1fae5';
     badgeText = '#065f46';
   } else if (statusUpper.includes('CANCEL')) {
@@ -476,12 +523,15 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
     badgeText = '#3730a3';
   }
 
-  const itemsHtml = values.items && values.items.length > 0
-    ? values.items
-        .map(item => {
-          const title = item.name || item.title || 'Apparel Item';
-          const variantDesc = [item.size, item.color].filter(Boolean).join(' / ');
-          return `
+  const itemsHtml =
+    values.items && values.items.length > 0
+      ? values.items
+          .map(item => {
+            const title = item.name || item.title || 'Apparel Item';
+            const variantDesc = [item.size, item.color]
+              .filter(Boolean)
+              .join(' / ');
+            return `
             <tr>
               <td style="padding: 8px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; color: #05281d;">
                 <strong>${title}</strong> ${variantDesc ? `<span style="color: #64748b;">(${variantDesc})</span>` : ''}
@@ -491,23 +541,18 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
               </td>
             </tr>
           `;
-        })
-        .join('')
-    : '';
+          })
+          .join('')
+      : '';
 
   return {
     to: values.email,
     subject: `Order Status Update: #${values.orderId} is now ${values.status.toUpperCase()}`,
-    html: `
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 32px 12px; color: #1e293b; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(5, 40, 29, 0.08); border: 1px solid #e2e8f0; margin: 0 auto;">
+    html: emailWrapper(`
           <!-- Header Banner -->
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 32px 24px; text-align: center;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 160px; height: auto; margin: 0 auto;" />
+            <td align="center" class="mobile-header-padding" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 32px 24px; text-align: center;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
               <div style="margin-top: 12px;">
                 <span style="display: inline-block; background-color: rgba(237, 224, 203, 0.2); border: 1px solid rgba(237, 224, 203, 0.4); color: #ede0cb; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 14px; border-radius: 50px;">
                   Status Update
@@ -518,7 +563,7 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
 
           <!-- Body Content -->
           <tr>
-            <td style="padding: 36px 32px 28px 32px;">
+            <td class="mobile-padding" style="padding: 28px 24px 24px 24px;">
               <h1 style="color: #05281d; font-size: 22px; font-weight: 800; margin: 0 0 10px 0; text-align: center;">
                 Order Status Updated
               </h1>
@@ -527,7 +572,7 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
               </p>
 
               <!-- Status Badge Box -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 24px;">
+              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 24px;">
                 <p style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; margin: 0 0 8px 0; font-weight: 600;">
                   Current Status
                 </p>
@@ -537,11 +582,11 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
               </div>
 
               <!-- Order Summary Card -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
+              <div class="mobile-card-padding" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; word-break: break-word;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #334155;">
                   <tr>
                     <td style="font-weight: 600; color: #64748b; width: 40%;">Order Number:</td>
-                    <td style="font-family: monospace; font-weight: 700; color: #05281d;">#${values.orderId}</td>
+                    <td style="font-family: monospace; font-weight: 700; color: #05281d; word-break: break-all;">#${values.orderId}</td>
                   </tr>
                   ${
                     values.totalPrice !== undefined
@@ -598,12 +643,7 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
               </p>
             </td>
           </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-    `,
+    `),
   };
 };
 
@@ -613,16 +653,11 @@ export const preOrderReady = (values: IPreOrderReady) => {
   return {
     to: values.email,
     subject: `Your Pre-Ordered Item is Ready! #${values.orderId} - IFundAyiti`,
-    html: `
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 32px 12px; color: #1e293b; -webkit-font-smoothing: antialiased;">
-  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #f8fafc;">
-    <tr>
-      <td align="center">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(5, 40, 29, 0.08); border: 1px solid #e2e8f0; margin: 0 auto;">
+    html: emailWrapper(`
           <!-- Header Banner -->
           <tr>
-            <td align="center" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 32px 24px; text-align: center;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 160px; height: auto; margin: 0 auto;" />
+            <td align="center" class="mobile-header-padding" style="background: linear-gradient(135deg, #05281d 0%, #0b3d2e 50%, #041c15 100%); padding: 32px 24px; text-align: center;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
               <div style="margin-top: 12px;">
                 <span style="display: inline-block; background-color: rgba(237, 224, 203, 0.2); border: 1px solid rgba(237, 224, 203, 0.4); color: #ede0cb; font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 4px 14px; border-radius: 50px;">
                   Pre-Order Arrival
@@ -633,7 +668,7 @@ export const preOrderReady = (values: IPreOrderReady) => {
 
           <!-- Body Content -->
           <tr>
-            <td style="padding: 36px 32px 28px 32px;">
+            <td class="mobile-padding" style="padding: 28px 24px 24px 24px;">
               <h1 style="color: #05281d; font-size: 22px; font-weight: 800; margin: 0 0 10px 0; text-align: center;">
                 Great News! Your Pre-Order is Ready 🎉
               </h1>
@@ -642,7 +677,7 @@ export const preOrderReady = (values: IPreOrderReady) => {
               </p>
 
               <!-- Ready Item Box -->
-              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+              <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 16px; padding: 18px; margin-bottom: 24px;">
                 <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #166534; margin-bottom: 8px;">
                   Item Prepared for Dispatch
                 </div>
@@ -655,11 +690,11 @@ export const preOrderReady = (values: IPreOrderReady) => {
               </div>
 
               <!-- Order Summary Card -->
-              <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; margin-bottom: 24px;">
+              <div class="mobile-card-padding" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 16px 18px; margin-bottom: 24px; word-break: break-word;">
                 <table width="100%" border="0" cellspacing="0" cellpadding="4" style="font-size: 13px; color: #334155;">
                   <tr>
                     <td style="font-weight: 600; color: #64748b; width: 40%;">Order Number:</td>
-                    <td style="font-family: monospace; font-weight: 700; color: #05281d;">#${values.orderId}</td>
+                    <td style="font-family: monospace; font-weight: 700; color: #05281d; word-break: break-all;">#${values.orderId}</td>
                   </tr>
                   ${
                     values.formattedAddress
@@ -693,11 +728,6 @@ export const preOrderReady = (values: IPreOrderReady) => {
               </p>
             </td>
           </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-    `,
+    `),
   };
 };

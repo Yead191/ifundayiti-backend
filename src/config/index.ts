@@ -21,6 +21,13 @@ export default {
     port: process.env.EMAIL_PORT,
     host: process.env.EMAIL_HOST,
     pass: process.env.EMAIL_PASS,
+
+    // Order specific
+    order_from: process.env.ORDER_EMAIL_FROM || process.env.EMAIL_FROM,
+    order_user: process.env.ORDER_EMAIL_USER || process.env.EMAIL_USER,
+    order_port: process.env.ORDER_EMAIL_PORT || process.env.EMAIL_PORT,
+    order_host: process.env.ORDER_EMAIL_HOST || process.env.EMAIL_HOST,
+    order_pass: process.env.ORDER_EMAIL_PASS || process.env.EMAIL_PASS,
   },
   super_admin: {
     email: process.env.SUPER_ADMIN_EMAIL,

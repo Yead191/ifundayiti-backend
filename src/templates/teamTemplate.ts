@@ -21,7 +21,7 @@ export const teamMemberCreated = (values: ITeamMemberCreated) => {
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <tr>
             <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <tr>
@@ -87,7 +87,7 @@ export const teamStatusUpdate = (values: ITeamStatusUpdate) => {
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <tr>
             <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <tr>
@@ -139,7 +139,7 @@ export const volunteerApplicationAdminNotification = (
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <tr>
             <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <tr>

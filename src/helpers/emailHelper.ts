@@ -28,6 +28,31 @@ const sendEmail = async (values: ISendEmail) => {
   }
 };
 
+// Transporter for order-related emails
+const orderTransporter = nodemailer.createTransport({
+  host: config.email.order_host,
+  port: Number(config.email.order_port),
+  secure: false,
+  auth: {
+    user: config.email.order_user,
+    pass: config.email.order_pass,
+  },
+});
+const sendOrderEmail = async (values: ISendEmail) => {
+  try {
+    const info = await orderTransporter.sendMail({
+      from: `${config.project_name} <${config.email.order_from}>`,
+      to: values.to,
+      subject: values.subject,
+      html: values.html,
+    });
+    logger.info('Order email sent successfully', info.accepted);
+  } catch (error) {
+    errorLogger.error('Order Email Error', error);
+  }
+};
+
 export const emailHelper = {
   sendEmail,
+  sendOrderEmail,
 };

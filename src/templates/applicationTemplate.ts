@@ -26,7 +26,7 @@ export const applicationSubmissionConfirmation = (
           <!-- Header/Logo Section -->
           <tr>
             <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
@@ -161,7 +161,7 @@ export const applicationStatusUpdate = (values: IApplicationStatusUpdate) => {
           <!-- Header/Logo Section -->
           <tr>
             <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 170px; height: auto; margin: 0 auto;" />
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->

@@ -177,14 +177,20 @@ const createOrderToDB = async (
     item => ({
       price_data: {
         currency: 'usd',
-
         product_data: {
-          name: `${item.name} - ${item.size} / ${item.color}`,
+          name: `${item.isPreOrder ? '[Pre-Order] ' : ''}${item.name} - ${item.size} / ${item.color}`,
+          ...(item.isPreOrder && {
+            description: `Pre-Order${
+              item.expectedAvailableDate
+                ? ` (Est. delivery: ${new Date(
+                    item.expectedAvailableDate,
+                  ).toLocaleDateString()})`
+                : ''
+            }`,
+          }),
         },
-
         unit_amount: Math.round(item.price * 100),
       },
-
       quantity: item.quantity,
     }),
   );
