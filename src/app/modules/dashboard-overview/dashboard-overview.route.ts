@@ -5,6 +5,13 @@ import { USER_ROLES } from '../../../enums/user';
 
 const router = express.Router();
 
-router.route('/').get(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), DashboardOverviewController.getDashboardOverview)
+router
+  .route('/')
+  .get(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    DashboardOverviewController.getDashboardOverview,
+  );
+
+router.route('/impact-stats').get(DashboardOverviewController.getImpactStats);
 
 export const DashboardOverviewRoutes = router;

@@ -277,7 +277,7 @@ export const orderConfirmation = (values: IOrderConfirmation) => {
           <tr>
             <td align="center" style="background-color: #f8fafc; padding: 24px 20px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="font-size: 11px; color: #94a3b8; margin: 0 0 6px 0; line-height: 1.5;">
-                Need help with your order? Contact us at support@ifundayiti.com.
+                Need help with your order? Contact us at Info@ifundayiti.org.
               </p>
               <p style="font-size: 11px; color: #94a3b8; margin: 0; line-height: 1.5;">
                 &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
@@ -636,7 +636,7 @@ export const orderStatusUpdate = (values: IOrderStatusUpdate) => {
           <tr>
             <td align="center" style="background-color: #f8fafc; padding: 24px 20px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="font-size: 11px; color: #94a3b8; margin: 0 0 6px 0; line-height: 1.5;">
-                Need help with your order? Contact us at support@ifundayiti.com.
+                Need help with your order? Contact us at Info@ifundayiti.org.
               </p>
               <p style="font-size: 11px; color: #94a3b8; margin: 0; line-height: 1.5;">
                 &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
@@ -721,7 +721,7 @@ export const preOrderReady = (values: IPreOrderReady) => {
           <tr>
             <td align="center" style="background-color: #f8fafc; padding: 24px 20px; border-top: 1px solid #e2e8f0; text-align: center;">
               <p style="font-size: 11px; color: #94a3b8; margin: 0 0 6px 0; line-height: 1.5;">
-                Need help with your order? Contact us at support@ifundayiti.com.
+                Need help with your order? Contact us at Info@ifundayiti.org.
               </p>
               <p style="font-size: 11px; color: #94a3b8; margin: 0; line-height: 1.5;">
                 &copy; ${new Date().getFullYear()} IFundAyiti. All rights reserved.
