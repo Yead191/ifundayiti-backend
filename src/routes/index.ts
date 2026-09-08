@@ -1,7 +1,10 @@
 import express from 'express';
 import { AuthRoutes } from '../app/modules/auth/auth.route';
 import { UserRoutes } from '../app/modules/user/user.route';
-import { ProductRoutes, BookRoutes } from '../app/modules/product/product.route';
+import {
+  ProductRoutes,
+  BookRoutes,
+} from '../app/modules/product/product.route';
 import { NotificationRoutes } from '../app/modules/notification/notification.route';
 import { MembershipRoutes } from '../app/modules/membership/membership.route';
 import { ApplicationperiodRoutes } from '../app/modules/iFundAyiti/applicationperiod/applicationperiod.route';
@@ -23,6 +26,7 @@ import { TeamRoutes } from '../app/modules/team/team.route';
 import { ProjectRoutes } from '../app/modules/project/project.route';
 import { GalleryRoutes } from '../app/modules/gallery/gallery.route';
 import { ProductcategoryRoutes } from '../app/modules/productcategory/productcategory.route';
+import { PartnerRoutes } from '../app/modules/partner/partner.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -131,6 +135,10 @@ const apiRoutes = [
   {
     path: '/gallery',
     route: GalleryRoutes,
+  },
+  {
+    path: '/partner',
+    route: PartnerRoutes,
   },
 ];
 

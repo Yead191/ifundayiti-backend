@@ -40,6 +40,11 @@ import {
   teamStatusUpdate,
   volunteerApplicationAdminNotification,
 } from '../templates/teamTemplate';
+import {
+  partnerApplicationUserConfirmation,
+  partnerApplicationAdminNotification,
+  partnerStatusUpdate,
+} from '../templates/partnerTemplate';
 
 export const emailTemplate = {
   createAccount,
@@ -68,4 +73,8 @@ export const emailTemplate = {
   teamMemberCreated,
   teamStatusUpdate,
   volunteerApplicationAdminNotification,
+  partnerApplicationUserConfirmation,
+  partnerApplicationAdminNotification,
+  partnerStatusUpdate,
 };
+

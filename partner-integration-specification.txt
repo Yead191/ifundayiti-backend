@@ -1,0 +1,244 @@
+================================================================================
+COMPLETE SPECIFICATION & PROMPT: PARTNER SYSTEM (WEBSITE & ADMIN DASHBOARD)
+================================================================================
+
+Target Applications:
+  1. User Website (Public Partner Directory, Hero Logo Carousel & Application Form)
+  2. Admin Dashboard (Partner Management, Review, Approval, Rejection & Featured Toggles)
+Base API Route: /partner (or /partners)
+Authentication: Bearer Token in Authorization header for authenticated endpoints
+
+================================================================================
+1. ARCHITECTURE & WORKFLOW OVERVIEW
+================================================================================
+
+A. PUBLIC USERS & VISITORS:
+   - View approved partner logos in an animated carousel on the landing/homepage (`GET /partner/logos`).
+   - Browse the public Partners Directory with search and filtering (`GET /partner`).
+   - View detailed partner profiles (`GET /partner/:id`).
+
+B. USER / APPLICANT SUBMISSION:
+   - Authenticated users (USER, VENDOR) can apply to become an official Partner (`POST /partner/apply`).
+   - Supports file upload for partner/organization logo (`image`).
+   - Submits organization details: name, description, offers/services array, website, contact email, contact phone.
+   - Prevents duplicate applications per user.
+   - Automatically:
+     1. Creates Partner document with `status: 'PENDING'` and `featured: false`.
+     2. Dispatches real-time in-app notification to the applicant ("Application Submitted").
+     3. Dispatches real-time in-app notification to all Admins ("New Partner Application").
+     4. Sends branded IFundAyiti confirmation email to the applicant.
+     5. Sends notification email with submission details to the admin support team (`config.support.admin`).
+
+C. ADMIN MANAGEMENT & REVIEW:
+   - Admins can directly create partners (`POST /partner`).
+   - Admins view all partners (Approved, Pending, Rejected) with status and search filters (`GET /partner`).
+   - Admins update partner details, logo, or toggle `featured` (`PATCH /partner/:id`).
+   - Admins review and transition status (`PATCH /partner/change-status` with `status: "APPROVED" | "REJECTED" | "PENDING"` and optional `rejectionReason`):
+     1. Updates partner status and saves optional rejection feedback in DB.
+     2. Sends real-time in-app notification to the applicant.
+     3. Dispatches branded IFundAyiti email to the applicant with status badge and feedback.
+   - Admins delete partners (`DELETE /partner/:id`), automatically cleaning up stored image files.
+
+================================================================================
+2. ENUMS & DATA INTERFACES
+================================================================================
+
+```typescript
+export enum PARTNER_STATUS {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export interface IPartner {
+  _id: string;
+  user?: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+    phone?: string;
+  } | string;
+  name: string;
+  image: string;
+  description?: string;
+  offers: string[];
+  website?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  status: PARTNER_STATUS;
+  featured: boolean;
+  rejectionReason?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+```
+
+================================================================================
+3. API ENDPOINTS SPECIFICATION
+================================================================================
+
+--------------------------------------------------------------------------------
+1) SUBMIT PARTNER APPLICATION (APPLICANT)
+--------------------------------------------------------------------------------
+- Route: POST /partner/apply
+- Access: Authenticated (USER, VENDOR, ADMIN, SUPER_ADMIN)
+- Content-Type: multipart/form-data
+- Form Data Fields:
+  - `image`: File (image/jpeg, image/png, image/webp) [Required]
+  - `name`: string [Required]
+  - `description`: string [Optional]
+  - `offers`: string[] or JSON string array `["Co-marketing", "Event Sponsorship"]` [Optional]
+  - `website`: string [Optional]
+  - `contactEmail`: string [Optional]
+  - `contactPhone`: string [Optional]
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner application submitted successfully",
+    "data": { ...partnerObject }
+  }
+
+--------------------------------------------------------------------------------
+2) CREATE PARTNER (ADMIN DIRECT CREATION)
+--------------------------------------------------------------------------------
+- Route: POST /partner
+- Access: ADMIN, SUPER_ADMIN
+- Content-Type: multipart/form-data
+- Form Data Fields: Same as above + optional `status`, `featured`
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner created successfully",
+    "data": { ...partnerObject }
+  }
+
+--------------------------------------------------------------------------------
+3) GET ALL PARTNERS (PUBLIC & ADMIN)
+--------------------------------------------------------------------------------
+- Route: GET /partner (or GET /partners)
+- Access: Public (Public/Users only see APPROVED; Admins see all)
+- Query Parameters:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (searches `name`, `description`)
+  - `status`: "PENDING" | "APPROVED" | "REJECTED" (Admin only)
+  - `featured`: boolean (e.g. `true`)
+  - `sort`: string (default: "-featured -createdAt")
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner fetched successfully",
+    "data": [ { ...partnerObject } ],
+    "pagination": {
+      "page": 1,
+      "limit": 10,
+      "total": 12,
+      "totalPage": 2
+    }
+  }
+
+--------------------------------------------------------------------------------
+4) GET PARTNER LOGOS CAROUSEL (PUBLIC)
+--------------------------------------------------------------------------------
+- Route: GET /partner/logos
+- Access: Public
+- Description: Returns lightweight list of approved partner logos and names for landing page carousels.
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner logos fetched successfully",
+    "data": [
+      {
+        "_id": "67c9...",
+        "name": "Partner Organization",
+        "image": "https://res.cloudinary.com/.../logo.png"
+      }
+    ]
+  }
+
+--------------------------------------------------------------------------------
+5) GET SINGLE PARTNER DETAILS
+--------------------------------------------------------------------------------
+- Route: GET /partner/:id
+- Access: Public / Authenticated
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner fetched successfully",
+    "data": { ...partnerObject }
+  }
+
+--------------------------------------------------------------------------------
+6) UPDATE PARTNER STATUS (ADMIN REVIEW)
+--------------------------------------------------------------------------------
+- Route: PATCH /partner/change-status
+- Access: ADMIN, SUPER_ADMIN
+- Headers: { "Content-Type": "application/json" }
+- Request Body:
+  {
+    "id": "67c9...",
+    "status": "APPROVED" | "REJECTED" | "PENDING",
+    "rejectionReason": "Optional feedback message if rejected"
+  }
+- Behavior:
+  - Updates status in DB.
+  - Sends real-time in-app notification to the applicant.
+  - Dispatches branded email with status badge to applicant.
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner status changed successfully",
+    "data": { ...updatedPartnerObject }
+  }
+
+--------------------------------------------------------------------------------
+7) UPDATE PARTNER DETAILS (ADMIN)
+--------------------------------------------------------------------------------
+- Route: PATCH /partner/:id
+- Access: ADMIN, SUPER_ADMIN
+- Content-Type: multipart/form-data
+- Form Data Fields: Any partial fields (`name`, `description`, `offers`, `website`, `contactEmail`, `contactPhone`, `featured`, `image` file)
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner updated successfully",
+    "data": { ...updatedPartnerObject }
+  }
+
+--------------------------------------------------------------------------------
+8) DELETE PARTNER (ADMIN)
+--------------------------------------------------------------------------------
+- Route: DELETE /partner/:id
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Partner deleted successfully",
+    "data": { ...deletedPartnerObject }
+  }
+
+===============================================================================
+4. EMAIL NOTIFICATIONS SUMMARY (BRANDED IFUNDAYITI TEMPLATES)
+===============================================================================
+
+1. Partner Application User Confirmation (`partnerApplicationUserConfirmation`):
+   - Dispatched immediately upon `/partner/apply`.
+   - Informs applicant that their submission was received and is "Under Review".
+
+2. Partner Application Admin Notification (`partnerApplicationAdminNotification`):
+   - Dispatched to `config.support.admin`.
+   - Contains applicant name, email, organization name, contact info, website, and bulleted offers.
+
+3. Partner Status Update Email (`partnerStatusUpdate`):
+   - Dispatched to applicant upon status change (`APPROVED`, `REJECTED`, `PENDING`).
+   - Features color-coded badge, approval celebration or rejection reason callout block with constructive feedback.
+================================================================================
