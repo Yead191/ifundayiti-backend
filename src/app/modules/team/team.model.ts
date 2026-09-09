@@ -16,7 +16,7 @@ const teamSchema = new Schema<ITeam, TeamModel>(
 
     category: {
       type: String,
-      enum: ['director', 'member', 'volunteer'],
+      enum: ['director', 'member', 'volunteer', 'staff'],
       required: true,
     },
 

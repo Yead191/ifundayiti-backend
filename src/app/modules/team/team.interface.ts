@@ -1,5 +1,5 @@
 import { Model } from 'mongoose';
-export type TeamMemberCategory = 'director' | 'member' | 'volunteer';
+export type TeamMemberCategory = 'director' | 'member' | 'volunteer' | 'staff';
 export type TeamStatus = 'pending' | 'active' | 'rejected' | 'blocked';
 export type ITeam = {
   name: string;

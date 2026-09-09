@@ -5,7 +5,7 @@ const createMemberZodSchema = z.object({
     name: z.string({ required_error: 'Name is required' }),
     title: z.string().optional(),
     email: z.string({ required_error: 'Email is required' }),
-    category: z.enum(['director', 'member', 'volunteer'], {
+    category: z.enum(['director', 'member', 'volunteer', 'staff'], {
       required_error: 'Category is required',
     }),
     location: z.string({ required_error: 'Location is required' }),
@@ -40,7 +40,7 @@ const updateMemberZodSchema = z.object({
     name: z.string().optional(),
     title: z.string().optional(),
     email: z.string().optional(),
-    category: z.enum(['director', 'member', 'volunteer']).optional(),
+    category: z.enum(['director', 'member', 'volunteer', 'staff']).optional(),
     location: z.string().optional(),
     bio: z.string().optional(),
     focusAreas: z.array(z.string()).optional(),

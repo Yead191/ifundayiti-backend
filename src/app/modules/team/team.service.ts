@@ -175,11 +175,13 @@ const deleteTeamMemberFromDB = async (id: string) => {
 };
 
 const teamStats = async () => {
-  const [totalDirectors, totalMembers, totalVolunteers] = await Promise.all([
-    Team.countDocuments({ category: 'director', status: 'active' }),
-    Team.countDocuments({ category: 'member', status: 'active' }),
-    Team.countDocuments({ category: 'volunteer', status: 'active' }),
-  ]);
+  const [totalDirectors, totalMembers, totalVolunteers, totalStaff] =
+    await Promise.all([
+      Team.countDocuments({ category: 'director', status: 'active' }),
+      Team.countDocuments({ category: 'member', status: 'active' }),
+      Team.countDocuments({ category: 'volunteer', status: 'active' }),
+      Team.countDocuments({ category: 'staff', status: 'active' }),
+    ]);
 
   const totalVolunteersPending = await Team.countDocuments({
     category: 'volunteer',
@@ -191,6 +193,7 @@ const teamStats = async () => {
     totalMembers,
     totalVolunteers,
     totalVolunteersPending,
+    totalStaff,
   };
 };
 
