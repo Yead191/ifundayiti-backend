@@ -122,6 +122,10 @@ const apiRoutes = [
     route: FaqRoutes,
   },
   {
+    path: '/faqs',
+    route: FaqRoutes,
+  },
+  {
     path: '/coupon',
     route: CouponRoutes,
   },

@@ -1,12 +1,22 @@
 import { Model } from 'mongoose';
-import { USER_ROLES } from '../../../enums/user';
 
-export type IFaq = {
+export interface IFAQItem {
   question: string;
   answer: string;
-  audience: USER_ROLES.USER | USER_ROLES.VENDOR;
+}
+
+export interface IFAQ {
+  title: string;
+  items: IFAQItem[];
+  isActive: boolean;
+  order: number;
   createdAt?: Date;
   updatedAt?: Date;
-};
+}
 
-export type FaqModel = Model<IFaq>;
+export type FAQModel = Model<IFAQ>;
+
+// Backward compatibility aliases
+export type IFaq = IFAQ;
+export type IFaqItem = IFAQItem;
+export type FaqModel = FAQModel;

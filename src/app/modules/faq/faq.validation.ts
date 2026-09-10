@@ -1,20 +1,35 @@
 import { z } from 'zod';
-import { USER_ROLES } from '../../../enums/user';
+
+const faqItemValidation = z.object({
+  question: z
+    .string({ required_error: 'Question is required' })
+    .trim()
+    .min(1, 'Question cannot be empty'),
+  answer: z
+    .string({ required_error: 'Answer is required' })
+    .trim()
+    .min(1, 'Answer cannot be empty'),
+});
 
 export const FaqValidations = {
   createFaq: z.object({
     body: z.object({
-      question: z.string().min(1, 'Question is required'),
-      answer: z.string().min(1, 'Answer is required'),
-      audience: z.enum([USER_ROLES.USER, USER_ROLES.VENDOR]),
+      title: z
+        .string({ required_error: 'Title is required' })
+        .trim()
+        .min(1, 'Title cannot be empty'),
+      items: z.array(faqItemValidation).default([]),
+      isActive: z.boolean().optional(),
+      order: z.number().optional(),
     }),
   }),
 
   updateFaq: z.object({
     body: z.object({
-      question: z.string().min(1, 'Question is required').optional(),
-      answer: z.string().min(1, 'Answer is required').optional(),
-      audience: z.enum([USER_ROLES.USER, USER_ROLES.VENDOR]).optional(),
+      title: z.string().trim().min(1, 'Title cannot be empty').optional(),
+      items: z.array(faqItemValidation).optional(),
+      isActive: z.boolean().optional(),
+      order: z.number().optional(),
     }),
   }),
 };

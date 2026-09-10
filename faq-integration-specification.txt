@@ -1,0 +1,292 @@
+================================================================================
+COMPLETE SPECIFICATION & PROMPT: CATEGORIZED FAQ SYSTEM
+(FOR WEBSITE & ADMIN DASHBOARD)
+================================================================================
+
+Target Applications:
+  1. User Website (Public FAQ: Category Tabs/Pills, Search & Accordion Q&A)
+  2. Admin Dashboard (Admin Portal: FAQ Category & Q&A Management)
+Base API Route: /faq (or /faqs)
+Authentication:
+  - Public Viewing: GET /faq (Public users only see isActive: true categories)
+  - Admin Management: Bearer Token (ADMIN, SUPER_ADMIN) for POST, PATCH, DELETE
+
+================================================================================
+1. ARCHITECTURAL OVERVIEW & DATA STRUCTURE
+================================================================================
+
+The FAQ system is organized into CATEGORY GROUPS (e.g., "General", "Application & Grants", "Donations", "Shop & Delivery").
+Each Category Group contains:
+  - `title`: The section/category header (e.g. "Application").
+  - `items`: An array of Q&A objects (`question` and `answer`).
+  - `order`: Numeric sort priority (e.g. 0, 1, 2...). Lower numbers appear first.
+  - `isActive`: Boolean toggle to publish or unpublish the entire category group.
+
+Example Database Document / API Response:
+{
+  "_id": "67cb1a2b3c4d5e6f7a8b9c01",
+  "title": "Application",
+  "items": [
+    {
+      "question": "How do I submit an application for funding?",
+      "answer": "Navigate to the Apply page during an active application period and fill out the multi-step form."
+    },
+    {
+      "question": "How do I track my application status?",
+      "answer": "Go to the Track Application page and enter your Application ID to view real-time review milestones."
+    }
+  ],
+  "isActive": true,
+  "order": 1,
+  "createdAt": "2026-09-10T12:00:00.000Z",
+  "updatedAt": "2026-09-10T12:00:00.000Z"
+}
+
+================================================================================
+2. TYPESCRIPT DATA INTERFACES
+================================================================================
+
+```typescript
+// Nested Q&A Item
+export interface IFAQItem {
+  question: string;
+  answer: string;
+}
+
+// Category Group
+export interface IFAQ {
+  _id: string;
+  title: string;
+  items: IFAQItem[];
+  isActive: boolean;
+  order: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// API Response Structure
+export interface FAQResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: IFAQ[];
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPage: number;
+  };
+}
+```
+
+================================================================================
+3. API ENDPOINTS SPECIFICATION
+================================================================================
+
+--------------------------------------------------------------------------------
+1) GET ALL FAQ CATEGORIES
+--------------------------------------------------------------------------------
+- Method & Route: GET /faq (or GET /faqs)
+- Access: Public
+- Behavior:
+  - Non-admin / Public visitors automatically receive only `isActive: true` records.
+  - Admins (with Bearer token) receive all categories (both active and inactive).
+  - Default sort: `order asc, createdAt asc`.
+- Query Parameters:
+  - `searchTerm`: string (searches `title`, `items.question`, `items.answer`)
+  - `isActive`: boolean (optional filter, e.g. `true` or `false`)
+  - `page`: number (default: 1)
+  - `limit`: number (default: 50)
+  - `sort`: string (default: "order createdAt")
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "FAQs fetched successfully",
+    "data": [
+      {
+        "_id": "67cb1a...",
+        "title": "General Inquiries",
+        "items": [
+          {
+            "question": "What is IFundAyiti?",
+            "answer": "IFundAyiti is a diaspora-powered crowdfunding and community development platform for Haiti."
+          }
+        ],
+        "isActive": true,
+        "order": 0,
+        "createdAt": "2026-09-10T10:00:00.000Z"
+      }
+    ],
+    "pagination": { "page": 1, "limit": 50, "total": 1, "totalPage": 1 }
+  }
+
+--------------------------------------------------------------------------------
+2) GET SINGLE FAQ CATEGORY
+--------------------------------------------------------------------------------
+- Method & Route: GET /faq/:id
+- Access: Public
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "FAQ fetched successfully",
+    "data": { ...faqCategoryObject }
+  }
+
+--------------------------------------------------------------------------------
+3) CREATE FAQ CATEGORY
+--------------------------------------------------------------------------------
+- Method & Route: POST /faq
+- Access: ADMIN, SUPER_ADMIN
+- Headers: { "Authorization": "Bearer <token>", "Content-Type": "application/json" }
+- Request Body:
+  {
+    "title": "Donations & Transparency",
+    "items": [
+      {
+        "question": "Are donations secure?",
+        "answer": "Yes, all transactions are processed via Stripe with 256-bit SSL encryption."
+      },
+      {
+        "question": "Do I receive a donation receipt?",
+        "answer": "Yes, an official confirmation receipt is emailed instantly upon successful payment."
+      }
+    ],
+    "isActive": true,
+    "order": 2
+  }
+- Validation:
+  - `title`: string (Required, min 1 char)
+  - `items`: array of `{ question: string, answer: string }` (Optional, defaults to `[]`)
+  - `isActive`: boolean (Optional, defaults to `true`)
+  - `order`: number (Optional, defaults to `0`)
+- Response (201 Created):
+  {
+    "statusCode": 201,
+    "success": true,
+    "message": "FAQ category created successfully",
+    "data": { ...createdFaqObject }
+  }
+
+--------------------------------------------------------------------------------
+4) UPDATE FAQ CATEGORY
+--------------------------------------------------------------------------------
+- Method & Route: PATCH /faq/:id
+- Access: ADMIN, SUPER_ADMIN
+- Headers: { "Authorization": "Bearer <token>", "Content-Type": "application/json" }
+- Request Body: Any partial fields (`title`, `items`, `isActive`, `order`)
+  {
+    "title": "Updated Category Title",
+    "isActive": false,
+    "order": 3,
+    "items": [
+      {
+        "question": "New Question?",
+        "answer": "New Answer."
+      }
+    ]
+  }
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "FAQ updated successfully",
+    "data": { ...updatedFaqObject }
+  }
+
+--------------------------------------------------------------------------------
+5) DELETE FAQ CATEGORY
+--------------------------------------------------------------------------------
+- Method & Route: DELETE /faq/:id
+- Access: ADMIN, SUPER_ADMIN
+- Headers: { "Authorization": "Bearer <token>" }
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "FAQ deleted successfully",
+    "data": { ...deletedFaqObject }
+  }
+
+================================================================================
+4. UI / UX IMPLEMENTATION GUIDE
+================================================================================
+
+--------------------------------------------------------------------------------
+A. USER WEBSITE (/faq)
+--------------------------------------------------------------------------------
+1. Hero Section:
+   - Eyebrow: "Help & Resources"
+   - Title: "Frequently Asked Questions"
+   - Subtitle: "Find quick answers about our grants, donations, store orders, and community programs."
+   - Search Input Bar: Realtime search filtering questions and answers across all categories.
+2. Category Navigation (Tabs / Pills):
+   - "All Questions" pill + one pill for each Category `title` (e.g., "General", "Application", "Donations", "Store").
+   - Clicking a pill smoothly scrolls to or filters that specific section.
+3. Category Sections & Accordions:
+   - Section Title with item count badge (e.g. "Application (4 questions)").
+   - Smooth accordion collapse/expand animation for each Q&A item:
+     - Question bar with `+` / `-` or chevron indicator.
+     - Answer panel styled with readable typography, line-height, and support for formatted links/paragraphs.
+   - When searching: Automatically open matching questions or highlight matching terms.
+4. "Still have questions?" Contact CTA Card at the bottom:
+   - Links to `/contact` or `/inquiry` for direct support.
+
+--------------------------------------------------------------------------------
+B. ADMIN DASHBOARD (/admin/faq)
+--------------------------------------------------------------------------------
+1. Header & Actions:
+   - Title: "FAQ Management"
+   - Subtitle: "Manage categorized questions and answers displayed across the storefront."
+   - Button: "+ Add FAQ Category" (opens modal or drawer).
+2. Category Cards / Collapsible Panes:
+   - Each Category displayed as an expandable panel or card.
+   - Card Header:
+     - Drag handle or Order number input/pill (`Order: 1`).
+     - Category Title.
+     - Number of Q&A items badge (`[X] Questions`).
+     - Status Switch: `Active` (green) / `Inactive` (gray) toggle (triggers quick `PATCH /faq/:id` with `{ isActive: !curr }`).
+     - Actions Menu: "Edit Category", "+ Add Question", "Delete Category".
+3. Inner Q&A List:
+   - Lists questions and answers inside that category.
+   - Inline "Edit" and "Remove" buttons for individual questions.
+4. Category Modal / Drawer:
+   - Category Title input.
+   - Display Order input (number).
+   - Active Switch.
+   - Dynamic Q&A Form List:
+     - Allows adding multiple question & answer pairs with "+ Add Another Question" button.
+     - Remove question button next to each pair.
+
+================================================================================
+5. READY-TO-USE PROMPTS FOR FRONTEND ASSISTANTS / DEVELOPERS
+================================================================================
+
+--------------------------------------------------------------------------------
+PROMPT FOR USER WEBSITE DEVELOPER:
+--------------------------------------------------------------------------------
+"Implement the public FAQ page at /faq for IFundAyiti using our categorized FAQ API:
+1. Fetch all active FAQ categories from `GET /faq` (which returns `{ data: IFAQ[] }`). Each document contains `title`, `items: [{ question, answer }]`, and `order`.
+2. Provide a search input at the top that filters questions and answers in real-time.
+3. Show category pill tabs (e.g. 'All', plus each category title). Clicking a tab filters the view or scrolls to that section.
+4. Render each category with its title and a modern accordion for its `items` array. Only one or multiple accordions can be expanded at a time with smooth slide-down animation.
+5. If search returns no results, show an empty state with a 'Clear Search' button.
+6. Add a 'Still have questions?' banner at the bottom with a link to /contact."
+
+--------------------------------------------------------------------------------
+PROMPT FOR ADMIN DASHBOARD DEVELOPER:
+--------------------------------------------------------------------------------
+"Build the FAQ Management interface in the Admin Dashboard at /admin/faq:
+1. Fetch all categories using `GET /faq`.
+2. Display categories in order of their `order` property. Show category title, number of questions, an active/inactive toggle (`PATCH /faq/:id` with `{ isActive }`), and edit/delete buttons.
+3. Clicking a category expands it to reveal its list of Q&A items (`items: [{ question, answer }]`).
+4. Provide a '+ Create Category' button opening a modal/drawer:
+   - Input for `title` (required)
+   - Input for `order` (number)
+   - Switch for `isActive` (default true)
+   - Dynamic form list to add/remove multiple question and answer fields.
+   - Submits `POST /faq`.
+5. Provide an 'Edit Category' modal to update title, order, or the items array (`PATCH /faq/:id`).
+6. Include a delete category button (`DELETE /faq/:id`) with a confirmation dialog."
+================================================================================

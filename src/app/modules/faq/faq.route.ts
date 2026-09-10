@@ -4,6 +4,7 @@ import auth from '../../middlewares/auth';
 import { USER_ROLES } from '../../../enums/user';
 import validateRequest from '../../middlewares/validateRequest';
 import { FaqValidations } from './faq.validation';
+import tempAuth from '../../middlewares/tempAuth';
 
 const router = express.Router();
 
@@ -14,10 +15,11 @@ router
     validateRequest(FaqValidations.createFaq),
     FaqController.createFaq,
   )
-  .get(FaqController.getAllFaqs);
+  .get(tempAuth(), FaqController.getAllFaqs);
 
 router
   .route('/:id')
+  .get(tempAuth(), FaqController.getSingleFaq)
   .patch(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
     validateRequest(FaqValidations.updateFaq),
