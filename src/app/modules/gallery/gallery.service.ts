@@ -9,23 +9,41 @@ import { StatusCodes } from 'http-status-codes';
 import ApiError from '../../../errors/ApiError';
 import unlinkFile from '../../../shared/unlinkFile';
 
+import { Folder } from '../folder/folder.model';
+
 const createGalleryToDB = async (payload: IGallery) => {
-  return await Gallery.create(payload);
+  if (payload.folder && payload.folder !== 'null' && payload.folder !== '') {
+    if (!Types.ObjectId.isValid(payload.folder as string)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
+    }
+    const folderExists = await Folder.findById(payload.folder);
+    if (!folderExists) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Folder not found');
+    }
+  } else {
+    payload.folder = undefined;
+  }
+  const result = await Gallery.create(payload);
+  return await Gallery.findById(result._id).populate('folder', 'name');
 };
 
 const getAllGalleriesFromDB = async (
   user: JwtPayload,
   query: Record<string, unknown>,
 ) => {
-  const initQuery = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(
-    user?.role,
-  )
+  const initQuery: Record<string, unknown> = [
+    USER_ROLES.SUPER_ADMIN,
+    USER_ROLES.ADMIN,
+  ].includes(user?.role)
     ? {}
     : {
         status: GALLERY_STATUS.PUBLISHED,
       };
 
-  const queryBuilder = new QueryBuilder(Gallery.find(initQuery), query)
+  const queryBuilder = new QueryBuilder(
+    Gallery.find(initQuery).populate('folder', 'name'),
+    query,
+  )
     .search(['title', 'description', 'category', 'location'])
     .filter()
     .sort()
@@ -47,7 +65,7 @@ const getSingleGalleryFromDB = async (id: string) => {
   if (!Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid gallery ID');
   }
-  const gallery = await Gallery.findById(id);
+  const gallery = await Gallery.findById(id).populate('folder', 'name');
   if (!gallery) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Gallery item not found');
   }
@@ -68,6 +86,20 @@ const updateGalleryToDB = async (
     throw new ApiError(StatusCodes.NOT_FOUND, 'Gallery item not found');
   }
 
+  if (payload.folder !== undefined) {
+    if (payload.folder && payload.folder !== 'null' && payload.folder !== '') {
+      if (!Types.ObjectId.isValid(payload.folder as string)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
+      }
+      const folderExists = await Folder.findById(payload.folder);
+      if (!folderExists) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Folder not found');
+      }
+    } else {
+      payload.folder = null as any;
+    }
+  }
+
   if (payload.image && payload.image !== gallery.image) {
     unlinkFile(gallery.image);
   }
@@ -75,7 +107,7 @@ const updateGalleryToDB = async (
   const result = await Gallery.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
-  });
+  }).populate('folder', 'name');
 
   if (!result) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Update failed');

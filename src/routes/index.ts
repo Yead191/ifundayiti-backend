@@ -27,6 +27,7 @@ import { ProjectRoutes } from '../app/modules/project/project.route';
 import { GalleryRoutes } from '../app/modules/gallery/gallery.route';
 import { ProductcategoryRoutes } from '../app/modules/productcategory/productcategory.route';
 import { PartnerRoutes } from '../app/modules/partner/partner.route';
+import { FolderRoutes } from '../app/modules/folder/folder.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -139,6 +140,14 @@ const apiRoutes = [
   {
     path: '/partner',
     route: PartnerRoutes,
+  },
+  {
+    path: '/partners',
+    route: PartnerRoutes,
+  },
+  {
+    path: '/folder',
+    route: FolderRoutes,
   },
 ];
 

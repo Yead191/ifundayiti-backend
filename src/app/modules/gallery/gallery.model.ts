@@ -20,6 +20,12 @@ const gallerySchema = new Schema<IGallery, GalleryModel>({
     required: true,
   },
 
+  folder: {
+    type: Schema.Types.ObjectId,
+    ref: 'Folder',
+    default: null,
+  },
+
   category: {
     type: String,
     trim: true,

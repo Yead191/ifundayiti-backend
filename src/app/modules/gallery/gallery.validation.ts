@@ -5,6 +5,7 @@ const createGalleryZod = z.object({
   body: z.object({
     title: z.string({ required_error: 'Title is required' }).trim(),
     description: z.string().trim().optional(),
+    folder: z.string().trim().optional().nullable(),
     category: z
       .string({ required_error: 'Category is required' })
       .trim(),
@@ -19,6 +20,7 @@ const updateGalleryZod = z.object({
   body: z.object({
     title: z.string().trim().optional(),
     description: z.string().trim().optional(),
+    folder: z.string().trim().optional().nullable(),
     category: z.string().trim().optional(),
     location: z.string().trim().optional(),
     image: z.string().optional(),
