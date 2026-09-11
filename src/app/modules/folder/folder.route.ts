@@ -4,6 +4,7 @@ import auth from '../../middlewares/auth';
 import { USER_ROLES } from '../../../enums/user';
 import validateRequest from '../../middlewares/validateRequest';
 import { FolderValidations } from './folder.validation';
+import fileUploadHandler from '../../middlewares/fileUploadHandler';
 
 const router = express.Router();
 
@@ -11,6 +12,7 @@ router
   .route('/')
   .post(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    fileUploadHandler(),
     validateRequest(FolderValidations.createFolderZodSchema),
     FolderController.createFolder,
   )
@@ -21,6 +23,7 @@ router
   .get(FolderController.getSingleFolder)
   .patch(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    fileUploadHandler(),
     validateRequest(FolderValidations.updateFolderZodSchema),
     FolderController.updateFolder,
   )

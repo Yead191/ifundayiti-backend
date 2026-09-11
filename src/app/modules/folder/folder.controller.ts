@@ -3,9 +3,15 @@ import { StatusCodes } from 'http-status-codes';
 import catchAsync from '../../../shared/catchAsync';
 import sendResponse from '../../../shared/sendResponse';
 import { FolderServices } from './folder.service';
+import { getSingleFilePath } from '../../../shared/getFilePath';
 
 const createFolder = catchAsync(async (req: Request, res: Response) => {
-  const result = await FolderServices.createFolderToDB(req.body);
+  let data = req.body;
+  const image = getSingleFilePath(req.files, 'image');
+  if (image) {
+    data.image = image;
+  }
+  const result = await FolderServices.createFolderToDB(data);
   return sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
@@ -38,7 +44,12 @@ const getSingleFolder = catchAsync(async (req: Request, res: Response) => {
 
 const updateFolder = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await FolderServices.updateFolderToDB(id, req.body);
+  let data = req.body;
+  const image = getSingleFilePath(req.files, 'image');
+  if (image) {
+    data.image = image;
+  }
+  const result = await FolderServices.updateFolderToDB(id, data);
   return sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,

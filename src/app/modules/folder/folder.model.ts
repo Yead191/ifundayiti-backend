@@ -9,6 +9,11 @@ const folderSchema = new Schema<IFolder, FolderModel>(
       unique: true,
       trim: true,
     },
+    image: {
+      type: String,
+      required: false,
+      trim: true,
+    },
   },
   {
     timestamps: true,
