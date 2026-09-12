@@ -1,58 +1,27 @@
 import { Schema, model } from 'mongoose';
 import { IGallery, GalleryModel } from './gallery.interface';
-import { GALLERY_STATUS } from './gallery.constants';
 
-const gallerySchema = new Schema<IGallery, GalleryModel>({
-  title: {
-    type: String,
-    required: true,
-    trim: true,
+const gallerySchema = new Schema<IGallery, GalleryModel>(
+  {
+    folder: {
+      type: Schema.Types.ObjectId,
+      ref: 'Folder',
+      required: true,
+      index: true,
+    },
+    image: {
+      type: String,
+      required: true,
+    },
+    caption: {
+      type: String,
+      trim: true,
+      default: '',
+    },
   },
-
-  description: {
-    type: String,
-    trim: true,
-    default: '',
+  {
+    timestamps: true,
   },
-
-  image: {
-    type: String,
-    required: true,
-  },
-
-  folder: {
-    type: Schema.Types.ObjectId,
-    ref: 'Folder',
-    default: null,
-  },
-
-  category: {
-    type: String,
-    trim: true,
-    default: '',
-  },
-
-  location: {
-    type: String,
-    trim: true,
-    default: '',
-  },
-
-  date: {
-    type: Date,
-    default: Date.now,
-  },
-
-  status: {
-    type: String,
-    enum: Object.values(GALLERY_STATUS),
-    default: GALLERY_STATUS.DRAFT,
-  },
-
-  featured: {
-    type: Boolean,
-    default: false,
-  },
-}, { timestamps: true });
+);
 
 export const Gallery = model<IGallery, GalleryModel>('Gallery', gallerySchema);

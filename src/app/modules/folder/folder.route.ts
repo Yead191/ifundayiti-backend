@@ -5,6 +5,7 @@ import { USER_ROLES } from '../../../enums/user';
 import validateRequest from '../../middlewares/validateRequest';
 import { FolderValidations } from './folder.validation';
 import fileUploadHandler from '../../middlewares/fileUploadHandler';
+import tempAuth from '../../middlewares/tempAuth';
 
 const router = express.Router();
 
@@ -16,11 +17,32 @@ router
     validateRequest(FolderValidations.createFolderZodSchema),
     FolderController.createFolder,
   )
-  .get(FolderController.getAllFolders);
+  .get(tempAuth(), FolderController.getAllFolders);
+
+router
+  .route('/stats')
+  .get(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    FolderController.getFolderStats,
+  );
+
+router.patch(
+  '/status/:id',
+  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+  validateRequest(FolderValidations.updateFolderStatusZod),
+  FolderController.updateFolderStatus,
+);
+
+router.patch(
+  '/featured/:id',
+  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+  validateRequest(FolderValidations.toggleFolderFeaturedZod),
+  FolderController.toggleFolderFeatured,
+);
 
 router
   .route('/:id')
-  .get(FolderController.getSingleFolder)
+  .get(tempAuth(), FolderController.getSingleFolder)
   .patch(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
     fileUploadHandler(),
@@ -33,3 +55,4 @@ router
   );
 
 export const FolderRoutes = router;
+

@@ -5,7 +5,6 @@ import { USER_ROLES } from '../../../enums/user';
 import validateRequest from '../../middlewares/validateRequest';
 import { GalleryValidations } from './gallery.validation';
 import fileUploadHandler from '../../middlewares/fileUploadHandler';
-import tempAuth from '../../middlewares/tempAuth';
 
 const router = express.Router();
 
@@ -13,40 +12,25 @@ router
   .route('/')
   .post(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    fileUploadHandler(),
+    fileUploadHandler([{ name: 'image', maxCount: 20 }]),
     validateRequest(GalleryValidations.createGalleryZod),
     GalleryController.createGallery,
   )
-  .get(tempAuth(), GalleryController.getAllGalleries);
+  .get(GalleryController.getAllGalleries);
 
-router
-  .route('/stats')
-  .get(
-    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    GalleryController.getGalleryStats,
-  );
-
-router.patch(
-  '/status/:id',
+router.delete(
+  '/delete-multiple',
   auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-  validateRequest(GalleryValidations.updateGalleryStatusZod),
-  GalleryController.updateGalleryStatus,
+  validateRequest(GalleryValidations.deleteMultipleGalleriesZod),
+  GalleryController.deleteMultipleGalleries,
 );
-
-router.patch(
-  '/featured/:id',
-  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-  validateRequest(GalleryValidations.toggleGalleryFeaturedZod),
-  GalleryController.toggleGalleryFeatured,
-);
-
-router.route('/:id').get(tempAuth(), GalleryController.getSingleGallery);
 
 router
   .route('/:id')
+  .get(GalleryController.getSingleGallery)
   .patch(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    fileUploadHandler(),
+    fileUploadHandler([{ name: 'image', maxCount: 1 }]),
     validateRequest(GalleryValidations.updateGalleryZod),
     GalleryController.updateGallery,
   )

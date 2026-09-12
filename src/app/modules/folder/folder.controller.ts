@@ -21,7 +21,10 @@ const createFolder = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllFolders = catchAsync(async (req: Request, res: Response) => {
-  const result = await FolderServices.getAllFoldersFromDB(req.query);
+  const result = await FolderServices.getAllFoldersFromDB(
+    req.user,
+    req.query,
+  );
   return sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -58,6 +61,41 @@ const updateFolder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateFolderStatus = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const result = await FolderServices.updateFolderStatusToDB(id, status);
+  return sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Folder status updated successfully',
+    data: result,
+  });
+});
+
+const toggleFolderFeatured = catchAsync(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const result = await FolderServices.toggleFolderFeaturedToDB(id);
+    return sendResponse(res, {
+      statusCode: StatusCodes.OK,
+      success: true,
+      message: 'Folder featured status toggled successfully',
+      data: result,
+    });
+  },
+);
+
+const getFolderStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await FolderServices.getFolderStatsFromDB();
+  return sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Folder stats fetched successfully',
+    data: result,
+  });
+});
+
 const deleteFolder = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await FolderServices.deleteFolderToDB(id);
@@ -74,5 +112,8 @@ export const FolderController = {
   getAllFolders,
   getSingleFolder,
   updateFolder,
+  updateFolderStatus,
+  toggleFolderFeatured,
+  getFolderStats,
   deleteFolder,
 };

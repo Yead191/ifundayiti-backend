@@ -1,12 +1,14 @@
 import { Types } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
+import { JwtPayload } from 'jsonwebtoken';
 import ApiError from '../../../errors/ApiError';
 import QueryBuilder from '../../builder/QueryBuilder';
 import { IFolder } from './folder.interface';
 import { Folder } from './folder.model';
-import { folderSearchableFields } from './folder.constants';
+import { folderSearchableFields, FOLDER_STATUS } from './folder.constants';
 import { Gallery } from '../gallery/gallery.model';
 import unlinkFile from '../../../shared/unlinkFile';
+import { USER_ROLES } from '../../../enums/user';
 
 const createFolderToDB = async (payload: IFolder) => {
   try {
@@ -37,8 +39,23 @@ const createFolderToDB = async (payload: IFolder) => {
   }
 };
 
-const getAllFoldersFromDB = async (query: Record<string, unknown>) => {
-  const folderQuery = new QueryBuilder(Folder.find(), query)
+const getAllFoldersFromDB = async (
+  user?: JwtPayload,
+  query?: Record<string, unknown>,
+) => {
+  const isAdmin =
+    user && [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(user?.role);
+
+  const initQuery: Record<string, unknown> = isAdmin
+    ? {}
+    : { status: FOLDER_STATUS.PUBLISHED };
+
+  const queryParams = { ...query };
+  if (!queryParams.sort) {
+    queryParams.sort = '-featured -createdAt';
+  }
+
+  const folderQuery = new QueryBuilder(Folder.find(initQuery), queryParams)
     .search(folderSearchableFields)
     .filter()
     .sort()
@@ -147,6 +164,86 @@ const updateFolderToDB = async (id: string, payload: Partial<IFolder>) => {
   return updatedFolder;
 };
 
+const updateFolderStatusToDB = async (
+  id: string,
+  status: FOLDER_STATUS,
+): Promise<IFolder> => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
+  }
+
+  const folder = await Folder.findByIdAndUpdate(
+    id,
+    { status },
+    { new: true, runValidators: true },
+  );
+
+  if (!folder) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Folder not found');
+  }
+
+  return folder;
+};
+
+const toggleFolderFeaturedToDB = async (id: string): Promise<IFolder> => {
+  if (!Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
+  }
+
+  const folder = await Folder.findById(id);
+
+  if (!folder) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Folder not found');
+  }
+
+  folder.featured = !folder.featured;
+  await folder.save();
+
+  return folder;
+};
+
+const getFolderStatsFromDB = async () => {
+  const [stats] = await Folder.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalFolders: { $sum: 1 },
+        publishedFolders: {
+          $sum: {
+            $cond: [{ $eq: ['$status', FOLDER_STATUS.PUBLISHED] }, 1, 0],
+          },
+        },
+        draftFolders: {
+          $sum: {
+            $cond: [{ $eq: ['$status', FOLDER_STATUS.DRAFT] }, 1, 0],
+          },
+        },
+        archivedFolders: {
+          $sum: {
+            $cond: [{ $eq: ['$status', FOLDER_STATUS.ARCHIVED] }, 1, 0],
+          },
+        },
+        featuredFolders: {
+          $sum: {
+            $cond: [{ $eq: ['$featured', true] }, 1, 0],
+          },
+        },
+      },
+    },
+  ]);
+
+  const totalImages = await Gallery.countDocuments();
+
+  return {
+    totalFolders: stats?.totalFolders || 0,
+    publishedFolders: stats?.publishedFolders || 0,
+    draftFolders: stats?.draftFolders || 0,
+    archivedFolders: stats?.archivedFolders || 0,
+    featuredFolders: stats?.featuredFolders || 0,
+    totalImages,
+  };
+};
+
 const deleteFolderToDB = async (id: string) => {
   if (!Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID.');
@@ -186,5 +283,8 @@ export const FolderServices = {
   getAllFoldersFromDB,
   getSingleFolderFromDB,
   updateFolderToDB,
+  updateFolderStatusToDB,
+  toggleFolderFeaturedToDB,
+  getFolderStatsFromDB,
   deleteFolderToDB,
 };

@@ -2,45 +2,34 @@ import { Request, Response } from 'express';
 import { GalleryServices } from './gallery.service';
 import catchAsync from '../../../shared/catchAsync';
 import sendResponse from '../../../shared/sendResponse';
-import { getSingleFilePath } from '../../../shared/getFilePath';
+import {
+  getMultipleFilesPath,
+  getSingleFilePath,
+} from '../../../shared/getFilePath';
 import { StatusCodes } from 'http-status-codes';
 
 const createGallery = catchAsync(async (req: Request, res: Response) => {
-  let data = req.body;
-  const image = getSingleFilePath(req.files, 'image');
-  if (image) {
-    data.image = image;
+  const data = { ...req.body };
+  const multipleImages = getMultipleFilesPath(req.files, 'image');
+  const singleImage = getSingleFilePath(req.files, 'image');
+
+  if (multipleImages && multipleImages.length > 1) {
+    data.images = multipleImages;
+  } else if (singleImage) {
+    data.image = singleImage;
   }
+
   const result = await GalleryServices.createGalleryToDB(data);
   return sendResponse(res, {
     statusCode: StatusCodes.CREATED,
     success: true,
-    message: 'Gallery item created successfully',
-    data: result,
-  });
-});
-
-const updateGallery = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  let data = req.body;
-  const image = getSingleFilePath(req.files, 'image');
-  if (image) {
-    data.image = image;
-  }
-  const result = await GalleryServices.updateGalleryToDB(id, data);
-  return sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Gallery item updated successfully',
+    message: 'Gallery image(s) added successfully',
     data: result,
   });
 });
 
 const getAllGalleries = catchAsync(async (req: Request, res: Response) => {
-  const result = await GalleryServices.getAllGalleriesFromDB(
-    req.user,
-    req.query,
-  );
+  const result = await GalleryServices.getAllGalleriesFromDB(req.query);
   return sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
@@ -61,6 +50,22 @@ const getSingleGallery = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const updateGallery = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const data = { ...req.body };
+  const image = getSingleFilePath(req.files, 'image');
+  if (image) {
+    data.image = image;
+  }
+  const result = await GalleryServices.updateGalleryToDB(id, data);
+  return sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Gallery item updated successfully',
+    data: result,
+  });
+});
+
 const deleteGallery = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await GalleryServices.deleteGalleryFromDB(id);
@@ -72,40 +77,18 @@ const deleteGallery = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-const updateGalleryStatus = catchAsync(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { status } = req.body;
-  const result = await GalleryServices.updateGalleryStatusToDB(id, status);
-  return sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Gallery status updated successfully',
-    data: result,
-  });
-});
-
-const toggleGalleryFeatured = catchAsync(
+const deleteMultipleGalleries = catchAsync(
   async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const result = await GalleryServices.toggleGalleryFeaturedToDB(id);
+    const { ids } = req.body;
+    const result = await GalleryServices.deleteMultipleGalleriesFromDB(ids);
     return sendResponse(res, {
       statusCode: StatusCodes.OK,
       success: true,
-      message: 'Gallery featured status toggled successfully',
+      message: `${result.deletedCount} gallery image(s) deleted successfully`,
       data: result,
     });
   },
 );
-
-const getGalleryStats = catchAsync(async (req: Request, res: Response) => {
-  const result = await GalleryServices.getGalleryStatsFromDB();
-  return sendResponse(res, {
-    statusCode: StatusCodes.OK,
-    success: true,
-    message: 'Gallery stats fetched successfully',
-    data: result,
-  });
-});
 
 export const GalleryController = {
   createGallery,
@@ -113,7 +96,5 @@ export const GalleryController = {
   getSingleGallery,
   updateGallery,
   deleteGallery,
-  updateGalleryStatus,
-  toggleGalleryFeatured,
-  getGalleryStats,
+  deleteMultipleGalleries,
 };

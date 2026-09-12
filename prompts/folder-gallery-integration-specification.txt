@@ -1,0 +1,437 @@
+================================================================================
+COMPLETE SPECIFICATION & PROMPT: FOLDER-BASED ALBUM & GALLERY SYSTEM
+(UPDATED: FOLDER HOLDS ALL METADATA, GALLERY CONTAINS IMAGES ONLY)
+================================================================================
+
+Target Applications:
+  1. User Website (Public Gallery: Album/Folder Directory & Photo Grid / Lightbox)
+  2. Admin Dashboard (Admin Portal: Folder Management with Full Metadata & Batch Photo Uploader)
+Base API Routes:
+  - Folders: /folder (or /api/v1/folder)
+  - Gallery: /gallery (or /api/v1/gallery)
+Authentication:
+  - Creation / Modification / Deletion / Admin Views: Bearer Token (ADMIN, SUPER_ADMIN)
+  - Public Viewing: Public (GET /folder, GET /folder/:id, GET /gallery)
+
+================================================================================
+1. ARCHITECTURAL OVERVIEW & ROLES
+================================================================================
+
+A. FOLDER (ALBUM / EVENT / STORY):
+   The Folder is now the central entity that carries ALL information and metadata:
+   - `name`: string (required, unique)
+   - `description`: string (optional detailed narrative/story)
+   - `image`: string (optional cover photo for the folder/album)
+   - `category`: string (Community Outreach, Grant Programs, Education, Healthcare, Events, etc.)
+   - `location`: string (e.g., Port-au-Prince, Cap-Haïtien)
+   - `date`: string/Date (e.g. event date or album creation date)
+   - `status`: "Draft" | "Published" | "Archived" (default: Published)
+   - `featured`: boolean (pinned to home page / featured gallery carousel)
+   - `galleryCount`: number (automatically computed count of images inside this folder)
+
+B. GALLERY (PHOTOS ONLY):
+   The Gallery items represent strictly individual photos belonging to a folder:
+   - `folder`: ObjectId (Folder ID reference, required)
+   - `image`: string (file path on disk, e.g. /image/photo-17890123.jpg, required)
+   - `caption`: string (optional short image caption/label)
+   - Supports uploading single or multiple images at once (up to 20 images in a single request).
+
+C. CASCADE DELETION & STORAGE CLEANUP:
+   When an admin deletes a folder (`DELETE /folder/:id`):
+   - The backend deletes the folder's cover image file from disk via `unlinkFile`.
+   - The backend finds all associated images in `Gallery` for that folder.
+   - For every associated image, it unlinks the physical file from disk via `unlinkFile`.
+   - Deletes all assigned `Gallery` database records.
+   - Deletes the `Folder` database record.
+   - When deleting an individual gallery photo (`DELETE /gallery/:id` or `DELETE /gallery/delete-multiple`), the backend unlinks each image file from disk and deletes the record.
+
+================================================================================
+2. TYPESCRIPT DATA INTERFACES
+================================================================================
+
+```typescript
+// Folder Status Enum
+export enum FOLDER_STATUS {
+  DRAFT = 'Draft',
+  PUBLISHED = 'Published',
+  ARCHIVED = 'Archived',
+}
+
+// Folder Categories (Preset list)
+export const FOLDER_CATEGORIES = [
+  'Community Outreach',
+  'Grant Programs',
+  'Education',
+  'Food & Agriculture',
+  'Healthcare',
+  'Community Development',
+  'Entrepreneurship',
+  'Environment',
+  'Events',
+  'Volunteering',
+  'Success Stories',
+  'Other',
+] as const;
+
+// Folder (Album) Interface - Contains all story & event metadata
+export interface IFolder {
+  _id: string;
+  name: string;
+  description?: string;
+  image?: string; // Cover photo
+  category?: string;
+  location?: string;
+  date?: string | Date;
+  status: FOLDER_STATUS;
+  featured: boolean;
+  galleryCount?: number; // Calculated dynamically by backend
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Gallery Photo Item Interface - Strictly photo + folder ref + caption
+export interface IGallery {
+  _id: string;
+  folder: string | {
+    _id: string;
+    name: string;
+    image?: string;
+    category?: string;
+    location?: string;
+    date?: string;
+    status?: FOLDER_STATUS;
+    featured?: boolean;
+  };
+  image: string; // File URL/path
+  caption?: string; // Optional short caption
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Folder Stats Response Interface
+export interface IFolderStats {
+  totalFolders: number;
+  publishedFolders: number;
+  draftFolders: number;
+  archivedFolders: number;
+  featuredFolders: number;
+  totalImages: number;
+}
+```
+
+================================================================================
+3. API ENDPOINTS SPECIFICATION
+================================================================================
+
+--------------------------------------------------------------------------------
+A. FOLDER ENDPOINTS (/folder)
+--------------------------------------------------------------------------------
+
+1) GET ALL FOLDERS
+   - Method: GET /folder
+   - Access: Public (Guests receive Published folders; Admins with Bearer token receive all folders)
+   - Query Parameters:
+     - `page`: number (default: 1)
+     - `limit`: number (default: 10)
+     - `searchTerm`: string (searches `name`, `description`, `category`, `location`)
+     - `category`: string (filter by category)
+     - `status`: "Draft" | "Published" | "Archived"
+     - `featured`: boolean
+     - `sort`: string (default: "-featured -createdAt")
+   - Response (200 OK):
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Folders fetched successfully",
+       "pagination": { "page": 1, "limit": 10, "total": 3, "totalPage": 1 },
+       "data": [
+         {
+           "_id": "67cb1a2b3c4d5e6f7a8b9c01",
+           "name": "Cap-Haïtien Community Clinic 2026",
+           "description": "Providing mobile clinic health screenings and medical kits.",
+           "image": "/image/clinic-cover-17890123.jpg",
+           "category": "Healthcare",
+           "location": "Cap-Haïtien",
+           "date": "2026-08-15T00:00:00.000Z",
+           "status": "Published",
+           "featured": true,
+           "galleryCount": 24,
+           "createdAt": "2026-08-16T10:00:00.000Z",
+           "updatedAt": "2026-08-16T10:00:00.000Z"
+         }
+       ]
+     }
+
+2) GET SINGLE FOLDER
+   - Method: GET /folder/:id
+   - Access: Public
+   - Response (200 OK): Returns folder details with `galleryCount`.
+
+3) CREATE FOLDER (WITH COVER PHOTO & METADATA)
+   - Method: POST /folder
+   - Access: ADMIN, SUPER_ADMIN
+   - Headers: `Authorization: Bearer <token>`
+   - Content-Type: `multipart/form-data`
+   - Form Fields:
+     - `name`: string (Required, unique)
+     - `description`: string (Optional)
+     - `category`: string (Optional)
+     - `location`: string (Optional)
+     - `date`: string (ISO date string, optional)
+     - `status`: "Draft" | "Published" | "Archived" (Optional, default: Published)
+     - `featured`: boolean (Optional, default: false)
+     - `image`: File (Cover image file, optional)
+   - Response (201 Created): Returns created folder object.
+
+4) UPDATE FOLDER
+   - Method: PATCH /folder/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Content-Type: `multipart/form-data`
+   - Form Fields: Any updated metadata fields or a new `image` file (old image will be automatically unlinked if replaced).
+   - Response (200 OK): Returns updated folder object.
+
+5) UPDATE FOLDER STATUS
+   - Method: PATCH /folder/status/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Request Body: `{ "status": "Published" }` ("Draft" | "Published" | "Archived")
+   - Response (200 OK)
+
+6) TOGGLE FOLDER FEATURED
+   - Method: PATCH /folder/featured/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Request Body: `{}` (toggles `featured` boolean)
+   - Response (200 OK)
+
+7) GET FOLDER & GALLERY STATS
+   - Method: GET /folder/stats
+   - Access: ADMIN, SUPER_ADMIN
+   - Response (200 OK):
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Folder stats fetched successfully",
+       "data": {
+         "totalFolders": 12,
+         "publishedFolders": 10,
+         "draftFolders": 1,
+         "archivedFolders": 1,
+         "featuredFolders": 3,
+         "totalImages": 142
+       }
+     }
+
+8) DELETE FOLDER (FULL CASCADE CLEANUP)
+   - Method: DELETE /folder/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Automatically unlinks folder cover photo + all gallery image files for this folder, and deletes all DB records.
+   - Response (200 OK)
+
+--------------------------------------------------------------------------------
+B. GALLERY ENDPOINTS (/gallery - IMAGES ONLY)
+--------------------------------------------------------------------------------
+
+1) GET ALL IMAGES IN A FOLDER (OR ALL IMAGES)
+   - Method: GET /gallery
+   - Access: Public
+   - Query Parameters:
+     - `folder`: string (Folder ObjectId - filter photos belonging to this folder)
+     - `page`: number (default: 1)
+     - `limit`: number (default: 20)
+     - `sort`: string (default: "-createdAt")
+     - `searchTerm`: string (searches `caption`)
+   - Response (200 OK):
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Galleries fetched successfully",
+       "pagination": { "page": 1, "limit": 20, "total": 24, "totalPage": 2 },
+       "data": [
+         {
+           "_id": "67cb2b...",
+           "folder": {
+             "_id": "67cb1a...",
+             "name": "Cap-Haïtien Community Clinic 2026"
+           },
+           "image": "/image/photo-17890456.jpg",
+           "caption": "Doctors preparing free health screening kits",
+           "createdAt": "2026-08-16T11:00:00.000Z"
+         }
+       ]
+     }
+
+2) ADD IMAGE(S) TO A FOLDER (SUPPORTS BATCH UPLOADS)
+   - Method: POST /gallery
+   - Access: ADMIN, SUPER_ADMIN
+   - Content-Type: `multipart/form-data`
+   - Form Fields:
+     - `folder`: string (Folder ID, required)
+     - `caption`: string (Optional short caption)
+     - `image`: File OR Multiple Files (supports up to 20 images at once under field name `image`)
+   - Response (201 Created):
+     Returns single created object or array of created image objects.
+
+3) GET SINGLE GALLERY IMAGE
+   - Method: GET /gallery/:id
+   - Access: Public
+   - Response (200 OK)
+
+4) UPDATE GALLERY IMAGE
+   - Method: PATCH /gallery/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Content-Type: `multipart/form-data`
+   - Form Fields: `caption`, `folder`, or new `image` File (replaces old file).
+   - Response (200 OK)
+
+5) DELETE SINGLE GALLERY IMAGE
+   - Method: DELETE /gallery/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Unlinks image file from disk and deletes record.
+   - Response (200 OK)
+
+6) BATCH DELETE MULTIPLE GALLERY IMAGES
+   - Method: DELETE /gallery/delete-multiple
+   - Access: ADMIN, SUPER_ADMIN
+   - Headers: `Content-Type: application/json`
+   - Request Body:
+     {
+       "ids": ["67cb2b11...", "67cb2b22...", "67cb2b33..."]
+     }
+   - Unlinks all physical files from disk and deletes records.
+   - Response (200 OK): `{ "statusCode": 200, "success": true, "message": "3 gallery image(s) deleted successfully" }`
+
+================================================================================
+4. FRONTEND ARCHITECTURE & UX GUIDE
+================================================================================
+
+--------------------------------------------------------------------------------
+A. ADMIN DASHBOARD WORKFLOW (/admin/gallery)
+--------------------------------------------------------------------------------
+
+VIEW 1: FOLDERS / ALBUMS DIRECTORY (/admin/gallery)
+1. Page Header:
+   - Title: "Gallery Albums & Folders"
+   - Subtitle: "Create and manage photo albums, event narratives, and image galleries."
+   - Quick Stat Cards: Total Folders, Published, Featured, Total Photos.
+   - Real-time Search & Filter: Search by name/location, filter by Category, filter by Status.
+   - Primary Action: "+ Create New Album" button.
+
+2. Create / Edit Folder Modal:
+   - Fields:
+     - Album Name (required)
+     - Category (dropdown with preset list)
+     - Location (e.g. Port-au-Prince)
+     - Event Date (date picker)
+     - Status (Draft / Published / Archived)
+     - Featured checkbox
+     - Description (textarea for the event/album summary)
+     - Cover Image (file upload with drag-and-drop preview)
+
+3. Folder Cards Grid:
+   - Card Thumbnail: Folder cover image (or stylized folder placeholder if no cover).
+   - Category Badge & Status Badge (Draft = yellow, Published = green, Archived = gray).
+   - Featured Star icon badge.
+   - Title: Bold folder name.
+   - Location & Date subtitle (e.g., "Cap-Haïtien • Aug 15, 2026").
+   - Photo Count Badge: "[X] Photos" (e.g., "24 Photos").
+   - Action Menu (3 dots):
+     - "Open Album" -> navigates to `/admin/gallery/folder/[id]`
+     - "Edit Details" -> opens edit modal
+     - "Toggle Featured" -> calls `PATCH /folder/featured/:id`
+     - "Change Status" -> quick dropdown
+     - "Delete Album" -> prompts red confirmation modal:
+       "Are you sure you want to delete '[Folder Name]'? This will permanently delete the album, its cover image, and all [X] photos inside from storage and the database. This action cannot be undone."
+
+VIEW 2: ALBUM PHOTOS MANAGER (/admin/gallery/folder/[id])
+1. Header & Navigation:
+   - Breadcrumb: `Albums  /  [Album Name]` (clicking "Albums" goes back).
+   - Album Title & Description display with category and location chips.
+   - Cover image thumbnail preview.
+   - Top Actions:
+     - "← Back to Albums" button.
+     - "Edit Album Details" button.
+     - "+ Add Photos" button (primary).
+
+2. Upload Photos Modal / Dropzone:
+   - "Add Photos to [Album Name]"
+   - Drag & Drop zone allowing multiple files (select up to 20 images at once!).
+   - Shows image preview grid before submitting.
+   - Optional caption input for the upload batch.
+   - Calls `POST /gallery` with `folder: [id]` and the selected image files.
+
+3. Photos Grid & Management:
+   - Multi-select checkbox mode to batch delete photos (`DELETE /gallery/delete-multiple`).
+   - Photos displayed in clean responsive grid (4-5 columns).
+   - Hover Overlay on each photo:
+     - Zoom / Lightbox preview.
+     - Edit Caption (`PATCH /gallery/:id`).
+     - Delete Photo (`DELETE /gallery/:id`).
+
+--------------------------------------------------------------------------------
+B. PUBLIC WEBSITE WORKFLOW (/gallery)
+--------------------------------------------------------------------------------
+
+VIEW 1: PUBLIC ALBUMS DIRECTORY (/gallery)
+1. Hero Section:
+   - "Impact in Action: Our Photo Gallery"
+   - "Explore stories of hope, community outreach, and transparent impact across Haiti."
+2. Category Navigation Tabs:
+   - "All Albums", "Community Outreach", "Healthcare", "Education", "Events", "Grant Programs", etc.
+3. Featured Albums Carousel / Spotlight:
+   - Highlights albums with `featured: true`.
+4. Album Cards Grid:
+   - High-quality cover photo with smooth zoom on hover.
+   - Pill badge for Category and Photo Count (e.g., "24 Photos").
+   - Album Name, Location, and Date.
+   - Short description preview.
+   - Clicking the card smoothly navigates to `/gallery/[folderId]`.
+
+VIEW 2: PUBLIC ALBUM GALLERY VIEW (/gallery/[folderId])
+1. Album Banner & Narrative:
+   - Back Link: `← Back to All Albums`
+   - Big Album Title, Category badge, Location pin, Date.
+   - Full story narrative / description.
+2. Photo Masonry / Grid:
+   - Responsive masonry layout for photos in this album (`GET /gallery?folder=[folderId]`).
+   - Subtle hover effects showing image caption (if provided).
+   - Clicking any photo opens a fullscreen Lightbox modal.
+3. Fullscreen Lightbox Modal:
+   - High-res image display.
+   - Next / Previous arrow buttons and keyboard arrow key support.
+   - Caption display at the bottom.
+   - Image counter (e.g., "Image 4 of 24").
+   - Close (ESC) button.
+
+================================================================================
+5. READY-TO-USE PROMPTS FOR DEVELOPERS / ASSISTANTS
+================================================================================
+
+--------------------------------------------------------------------------------
+PROMPT FOR ADMIN DASHBOARD:
+--------------------------------------------------------------------------------
+"Implement the updated Folder & Gallery architecture in our Admin Dashboard:
+1. Under `/admin/gallery`, build an Albums/Folders management page:
+   - Fetch albums using `GET /folder` (and stats via `GET /folder/stats`).
+   - Support creating albums via `POST /folder` with multipart/form-data: `name`, `description`, `category`, `location`, `date`, `status` (Draft/Published/Archived), `featured`, and cover `image` file.
+   - Display album cards with cover image, category badge, status badge, location, date, and `galleryCount`.
+   - Provide Quick Status Toggle (`PATCH /folder/status/:id`), Featured Toggle (`PATCH /folder/featured/:id`), Edit Album (`PATCH /folder/:id`), and Delete Album (`DELETE /folder/:id`) with cascade delete warning.
+2. Clicking an album opens `/admin/gallery/folder/[id]`:
+   - Display album header (name, description, location, date, cover photo) with breadcrumbs 'Albums > [Album Name]'.
+   - Fetch photos for this album via `GET /gallery?folder=[id]`.
+   - Implement an '+ Add Photos' uploader supporting multi-image selection (up to 20 images) via `POST /gallery` (`folder`, `image` files, optional `caption`).
+   - Allow individual photo deletion (`DELETE /gallery/:id`), batch deletion (`DELETE /gallery/delete-multiple`), caption editing (`PATCH /gallery/:id`), and fullscreen photo lightbox."
+
+--------------------------------------------------------------------------------
+PROMPT FOR PUBLIC WEBSITE:
+--------------------------------------------------------------------------------
+"Implement the public Gallery page using the new Album & Photo structure:
+1. On `/gallery`, display the Album Directory:
+   - Fetch albums using `GET /folder` (with category and search filters).
+   - Display album cards showing cover photo, category badge, album title, location, date, and photo count (`galleryCount`).
+   - Highlight featured albums at the top.
+2. Clicking an album navigates to `/gallery/[id]`:
+   - Show '← Back to All Albums' breadcrumb.
+   - Display album title, category, location, date, and narrative description.
+   - Fetch photos for this album using `GET /gallery?folder=[id]`.
+   - Render photos in a responsive masonry grid with hover animations.
+   - Clicking any photo opens a fullscreen Lightbox modal with next/previous controls and captions."
+================================================================================

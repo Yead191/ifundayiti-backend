@@ -1,28 +1,19 @@
 import { Model, Types } from 'mongoose';
-import { GALLERY_STATUS } from './gallery.constants';
 import { IFolder } from '../folder/folder.interface';
 
 export type IGallery = {
-  title: string;
-  description?: string;
-
+  folder: Types.ObjectId | IFolder | string;
   image: string;
-
-  folder?: Types.ObjectId | IFolder | string;
-
-  category?: string;
-
-  location?: string;
-
-  date?: Date;
-
-  status: GALLERY_STATUS;
-
-  featured: boolean;
-
+  caption?: string;
   createdAt?: Date;
   updatedAt?: Date;
 };
 
-export type GalleryModel = Model<IGallery>;
+export type ICreateGalleryPayload = {
+  folder: string;
+  image?: string;
+  images?: string[];
+  caption?: string;
+};
 
+export type GalleryModel = Model<IGallery>;

@@ -1,50 +1,78 @@
-import { JwtPayload } from 'jsonwebtoken';
-import QueryBuilder from '../../builder/QueryBuilder';
-import { IGallery } from './gallery.interface';
-import { Gallery } from './gallery.model';
-import { USER_ROLES } from '../../../enums/user';
-import { GALLERY_STATUS } from './gallery.constants';
 import { Types } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import ApiError from '../../../errors/ApiError';
+import QueryBuilder from '../../builder/QueryBuilder';
+import { IGallery, ICreateGalleryPayload } from './gallery.interface';
+import { Gallery } from './gallery.model';
+import { gallerySearchableFields } from './gallery.constants';
+import { Folder } from '../folder/folder.model';
 import unlinkFile from '../../../shared/unlinkFile';
 
-import { Folder } from '../folder/folder.model';
+const createGalleryToDB = async (payload: ICreateGalleryPayload) => {
+  const cleanupUploadedFiles = () => {
+    if (payload.image) {
+      unlinkFile(payload.image);
+    }
+    if (payload.images && Array.isArray(payload.images)) {
+      payload.images.forEach(img => unlinkFile(img));
+    }
+  };
 
-const createGalleryToDB = async (payload: IGallery) => {
-  if (payload.folder && payload.folder !== 'null' && payload.folder !== '') {
-    if (!Types.ObjectId.isValid(payload.folder as string)) {
+  try {
+    if (!payload.folder || !Types.ObjectId.isValid(payload.folder)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
     }
+
     const folderExists = await Folder.findById(payload.folder);
     if (!folderExists) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Folder not found');
     }
-  } else {
-    payload.folder = undefined;
+
+    if (payload.images && payload.images.length > 0) {
+      const itemsToCreate = payload.images.map(img => ({
+        folder: payload.folder,
+        image: img,
+        caption: payload.caption || '',
+      }));
+
+      const createdItems = await Gallery.insertMany(itemsToCreate);
+      return createdItems;
+    }
+
+    if (!payload.image) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'At least one image is required');
+    }
+
+    const created = await Gallery.create({
+      folder: payload.folder,
+      image: payload.image,
+      caption: payload.caption || '',
+    });
+
+    return await Gallery.findById(created._id).populate('folder', 'name');
+  } catch (error: any) {
+    cleanupUploadedFiles();
+    if (error instanceof ApiError) {
+      throw error;
+    }
+    throw new ApiError(
+      error.statusCode || StatusCodes.INTERNAL_SERVER_ERROR,
+      error.message || 'Failed to add image(s) to gallery',
+    );
   }
-  const result = await Gallery.create(payload);
-  return await Gallery.findById(result._id).populate('folder', 'name');
 };
 
-const getAllGalleriesFromDB = async (
-  user: JwtPayload,
-  query: Record<string, unknown>,
-) => {
-  const initQuery: Record<string, unknown> = [
-    USER_ROLES.SUPER_ADMIN,
-    USER_ROLES.ADMIN,
-  ].includes(user?.role)
-    ? {}
-    : {
-        status: GALLERY_STATUS.PUBLISHED,
-      };
+const getAllGalleriesFromDB = async (query: Record<string, unknown>) => {
+  const queryParams = { ...query };
+  if (!queryParams.sort) {
+    queryParams.sort = '-createdAt';
+  }
 
   const queryBuilder = new QueryBuilder(
-    Gallery.find(initQuery).populate('folder', 'name'),
-    query,
+    Gallery.find().populate('folder', 'name image category location date status featured'),
+    queryParams,
   )
-    .search(['title', 'description', 'category', 'location'])
+    .search(gallerySearchableFields)
     .filter()
     .sort()
     .paginate()
@@ -65,10 +93,16 @@ const getSingleGalleryFromDB = async (id: string) => {
   if (!Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid gallery ID');
   }
-  const gallery = await Gallery.findById(id).populate('folder', 'name');
+
+  const gallery = await Gallery.findById(id).populate(
+    'folder',
+    'name image category location date status featured',
+  );
+
   if (!gallery) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Gallery item not found');
   }
+
   return gallery;
 };
 
@@ -77,26 +111,33 @@ const updateGalleryToDB = async (
   payload: Partial<IGallery>,
 ): Promise<IGallery> => {
   if (!Types.ObjectId.isValid(id)) {
+    if (payload.image) {
+      unlinkFile(payload.image);
+    }
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid gallery ID');
   }
 
   const gallery = await Gallery.findById(id);
-
   if (!gallery) {
+    if (payload.image) {
+      unlinkFile(payload.image);
+    }
     throw new ApiError(StatusCodes.NOT_FOUND, 'Gallery item not found');
   }
 
-  if (payload.folder !== undefined) {
-    if (payload.folder && payload.folder !== 'null' && payload.folder !== '') {
-      if (!Types.ObjectId.isValid(payload.folder as string)) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
+  if (payload.folder) {
+    if (!Types.ObjectId.isValid(payload.folder as string)) {
+      if (payload.image) {
+        unlinkFile(payload.image);
       }
-      const folderExists = await Folder.findById(payload.folder);
-      if (!folderExists) {
-        throw new ApiError(StatusCodes.NOT_FOUND, 'Folder not found');
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid folder ID');
+    }
+    const folderExists = await Folder.findById(payload.folder);
+    if (!folderExists) {
+      if (payload.image) {
+        unlinkFile(payload.image);
       }
-    } else {
-      payload.folder = null as any;
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Target folder not found');
     }
   }
 
@@ -107,11 +148,12 @@ const updateGalleryToDB = async (
   const result = await Gallery.findByIdAndUpdate(id, payload, {
     new: true,
     runValidators: true,
-  }).populate('folder', 'name');
+  }).populate('folder', 'name image category location date status featured');
 
   if (!result) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Update failed');
   }
+
   return result;
 };
 
@@ -130,7 +172,6 @@ const deleteGalleryFromDB = async (id: string): Promise<IGallery> => {
   }
 
   const result = await Gallery.findByIdAndDelete(id);
-
   if (!result) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Unable to delete gallery item');
   }
@@ -138,84 +179,22 @@ const deleteGalleryFromDB = async (id: string): Promise<IGallery> => {
   return result;
 };
 
-const updateGalleryStatusToDB = async (
-  id: string,
-  status: GALLERY_STATUS,
-): Promise<IGallery> => {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid gallery ID');
+const deleteMultipleGalleriesFromDB = async (ids: string[]) => {
+  const validIds = ids.filter(id => Types.ObjectId.isValid(id));
+  if (validIds.length === 0) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'No valid gallery IDs provided');
   }
 
-  const gallery = await Gallery.findByIdAndUpdate(
-    id,
-    { status },
-    {
-      new: true,
-      runValidators: true,
-    },
-  );
-
-  if (!gallery) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Gallery item not found');
+  const items = await Gallery.find({ _id: { $in: validIds } });
+  for (const item of items) {
+    if (item.image) {
+      unlinkFile(item.image);
+    }
   }
 
-  return gallery;
-};
-
-const toggleGalleryFeaturedToDB = async (id: string): Promise<IGallery> => {
-  if (!Types.ObjectId.isValid(id)) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid gallery ID');
-  }
-
-  const gallery = await Gallery.findById(id);
-
-  if (!gallery) {
-    throw new ApiError(StatusCodes.NOT_FOUND, 'Gallery item not found');
-  }
-
-  gallery.featured = !gallery.featured;
-
-  await gallery.save();
-
-  return gallery;
-};
-
-const getGalleryStatsFromDB = async () => {
-  const [stats] = await Gallery.aggregate([
-    {
-      $group: {
-        _id: null,
-        totalItems: { $sum: 1 },
-        publishedItems: {
-          $sum: {
-            $cond: [{ $eq: ['$status', GALLERY_STATUS.PUBLISHED] }, 1, 0],
-          },
-        },
-        draftItems: {
-          $sum: {
-            $cond: [{ $eq: ['$status', GALLERY_STATUS.DRAFT] }, 1, 0],
-          },
-        },
-        archivedItems: {
-          $sum: {
-            $cond: [{ $eq: ['$status', GALLERY_STATUS.ARCHIVED] }, 1, 0],
-          },
-        },
-        featuredItems: {
-          $sum: {
-            $cond: [{ $eq: ['$featured', true] }, 1, 0],
-          },
-        },
-      },
-    },
-  ]);
-
+  const result = await Gallery.deleteMany({ _id: { $in: validIds } });
   return {
-    totalItems: stats?.totalItems || 0,
-    publishedItems: stats?.publishedItems || 0,
-    draftItems: stats?.draftItems || 0,
-    archivedItems: stats?.archivedItems || 0,
-    featuredItems: stats?.featuredItems || 0,
+    deletedCount: result.deletedCount,
   };
 };
 
@@ -225,7 +204,5 @@ export const GalleryServices = {
   getSingleGalleryFromDB,
   updateGalleryToDB,
   deleteGalleryFromDB,
-  updateGalleryStatusToDB,
-  toggleGalleryFeaturedToDB,
-  getGalleryStatsFromDB,
+  deleteMultipleGalleriesFromDB,
 };
