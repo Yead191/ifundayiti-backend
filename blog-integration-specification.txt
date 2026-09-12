@@ -1,0 +1,201 @@
+================================================================================
+COMPLETE SPECIFICATION & PROMPT: BLOG & BLOG CATEGORY SYSTEM
+(FOR ADMIN DASHBOARD & PUBLIC WEBSITE)
+================================================================================
+
+Base API Routes:
+  - Blogs: /blog or /blogs (or /api/v1/blog)
+  - Blog Categories: /blog-category or /blogcategory (or /api/v1/blog-category)
+Authentication:
+  - Admin Operations: Bearer Token (ADMIN, SUPER_ADMIN)
+  - Public Viewing: Public (GET /blog, GET /blog/:idOrSlug, GET /blog-category, GET /blog-category/:idOrSlug)
+
+================================================================================
+1. DATA STRUCTURES & TYPESCRIPT INTERFACES
+================================================================================
+
+```typescript
+export const BLOG_STATUS = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived',
+} as const;
+
+export type BLOG_STATUS = (typeof BLOG_STATUS)[keyof typeof BLOG_STATUS];
+
+// Blog Category Interface (Minimal: name and slug only, no images or description)
+export interface IBlogCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  blogCount?: number; // Automatically aggregated by backend
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Blog Post Interface
+export interface IBlog {
+  _id: string;
+  title: string;
+  slug: string;
+  content: string; // HTML or Markdown
+  image?: string; // Featured cover image path
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+  } | string;
+  author: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+  } | string;
+  tags?: string[];
+  status: BLOG_STATUS;
+  isFeatured: boolean;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Blog Stats Interface
+export interface IBlogStats {
+  total: number;
+  published: number;
+  draft: number;
+  archived: number;
+  featured: number;
+}
+```
+
+================================================================================
+2. API ENDPOINTS REFERENCE
+================================================================================
+
+--------------------------------------------------------------------------------
+A. BLOG CATEGORY ENDPOINTS (/blog-category or /blogcategory)
+--------------------------------------------------------------------------------
+
+1. GET ALL CATEGORIES
+   - Route: GET /blog-category
+   - Access: Public
+   - Query: `searchTerm` (searches name), `sort` (default: 'name')
+   - Response (200 OK):
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Blog categories fetched successfully",
+       "data": [
+         {
+           "_id": "67cc...",
+           "name": "Community Impact",
+           "slug": "community-impact",
+           "blogCount": 8,
+           "createdAt": "...",
+           "updatedAt": "..."
+         }
+       ]
+     }
+
+2. GET SINGLE CATEGORY
+   - Route: GET /blog-category/:idOrSlug
+   - Access: Public
+   - Response (200 OK): Returns category object with `blogCount`.
+
+3. CREATE CATEGORY
+   - Route: POST /blog-category
+   - Access: ADMIN, SUPER_ADMIN
+   - Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
+   - Body: `{ "name": "Community Impact" }`
+   - Response (201 Created): Automatically creates unique slug.
+
+4. UPDATE CATEGORY
+   - Route: PATCH /blog-category/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Body: `{ "name": "Updated Name" }`
+   - Response (200 OK): Regenerates slug if name is modified.
+
+
+5. DELETE CATEGORY
+   - Route: DELETE /blog-category/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Note: Safely prevented if blogs are currently linked to this category.
+
+--------------------------------------------------------------------------------
+B. BLOG ENDPOINTS (/blog or /blogs)
+--------------------------------------------------------------------------------
+
+1. GET ALL BLOGS
+   - Route: GET /blog
+   - Access: Public (Public receives only Published blogs; Admins receive Draft/Published/Archived)
+   - Query Parameters:
+     - `page`: number (default: 1)
+     - `limit`: number (default: 10)
+     - `searchTerm`: string (searches in `title` and `content`)
+     - `category`: string (Category ID or category slug)
+     - `status`: 'draft' | 'published' | 'archived' (Admin only)
+     - `isFeatured`: boolean
+     - `sort`: string (default: "-publishedAt -createdAt")
+   - Response (200 OK): `{ statusCode: 200, success: true, data: [IBlog], pagination: {...} }`
+
+2. GET SINGLE BLOG (BY ID OR SLUG)
+   - Route: GET /blog/:idOrSlug
+   - Access: Public (Public gets 404 if post is draft or archived; Admins can preview any post)
+   - Response (200 OK): Returns populated blog with author and category.
+
+3. CREATE BLOG
+   - Route: POST /blog
+   - Access: ADMIN, SUPER_ADMIN
+   - Content-Type: `multipart/form-data`
+   - Form Data Fields:
+     - `title`: string (Required)
+     - `content`: string (Required, Rich Text HTML or Markdown)
+     - `category`: string (Required, Category ObjectId)
+     - `image`: File (Optional cover photo)
+     - `tags`: string[] or comma-separated string / JSON string (Optional)
+     - `status`: 'draft' | 'published' | 'archived' (Optional, default: 'draft')
+     - `isFeatured`: boolean (Optional, default: false)
+     - `author`: string (Optional - automatically set to authenticated admin's User ID if omitted)
+   - Response (201 Created)
+
+4. UPDATE BLOG
+   - Route: PATCH /blog/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Content-Type: `multipart/form-data`
+   - Form Data Fields: Any fields to update. If a new `image` is uploaded, the old image is automatically deleted from disk storage.
+   - Response (200 OK)
+
+5. QUICK UPDATE STATUS
+   - Route: PATCH /blog/status/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Body: `{ "status": "published" | "draft" | "archived" }`
+   - Response (200 OK): If transitioning to 'published' for the first time, `publishedAt` is automatically set to `new Date()`.
+
+6. QUICK TOGGLE FEATURED
+   - Route: PATCH /blog/featured/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Body: `{}`
+   - Response (200 OK): Toggles `isFeatured` boolean.
+
+7. GET BLOG STATS
+   - Route: GET /blog/stats
+   - Access: ADMIN, SUPER_ADMIN
+   - Response (200 OK):
+     {
+       "statusCode": 200,
+       "success": true,
+       "data": {
+         "total": 24,
+         "published": 18,
+         "draft": 4,
+         "archived": 2,
+         "featured": 5
+       }
+     }
+
+8. DELETE BLOG
+   - Route: DELETE /blog/:id
+   - Access: ADMIN, SUPER_ADMIN
+   - Note: Unlinks physical cover image from disk storage and deletes record.
+================================================================================

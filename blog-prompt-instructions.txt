@@ -1,0 +1,400 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: BLOG & BLOG CATEGORY SYSTEM
+(FOR ADMIN DASHBOARD & PUBLIC WEBSITE)
+================================================================================
+
+Target Applications:
+  1. Admin Dashboard (/admin/blogs, /admin/blogs/create, /admin/blogs/edit/:id, /admin/blog-categories)
+  2. Public User Website (/blogs, /blogs/[slug])
+Base API URLs:
+  - Blogs: `/blog` or `/blogs` (e.g. `http://localhost:5000/api/v1/blog`)
+  - Categories: `/blog-category` or `/blogcategory` (e.g. `http://localhost:5000/api/v1/blog-category`)
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium Blog & Category Management in Admin Dashboard
+
+Implement a high-end, editorial-grade Blog Management system in the Admin Dashboard with two connected sections:
+1. **Blogs Management** (`/admin/blogs`, `/admin/blogs/create`, `/admin/blogs/edit/:id`)
+2. **Blog Categories Management** (`/admin/blog-categories` or an inline Category Manager drawer/modal)
+
+---
+
+#### 1. OVERVIEW & STATS BAR (`/admin/blogs`)
+- Fetch aggregate blog statistics using `GET /blog/stats`.
+- Display 5 sleek GlassCard stat metric widgets with subtle gradient glows and Ant Design icons:
+  - **Total Articles** (FileTextOutlined)
+  - **Published** (CheckCircleFilled - Emerald)
+  - **Drafts** (ClockCircleFilled - Amber)
+  - **Archived** (InboxOutlined - Slate)
+  - **Featured Spotlights** (StarFilled - Amber/Gold)
+- Header Actions:
+  - Quick Search bar with debounced input (searches `title`, `content`).
+  - Category filter dropdown (fetched from `GET /blog-category`).
+  - Status filter tabs / dropdown (`All`, `published`, `draft`, `archived`).
+  - Primary button: `+ Write New Article` (routes to `/admin/blogs/create`).
+  - Secondary button: `Manage Categories` (opens Category Drawer or routes to `/admin/blog-categories`).
+
+---
+
+#### 2. BLOGS DATA TABLE / EDITORIAL CARDS
+- Implement an Ant Design table or visual editorial card grid with toggleable view modes (Table View & Grid View):
+  - **Cover Image Thumbnail**: 16:9 thumbnail with zoom preview.
+  - **Article Title & Slug**: Bold title, click to preview/edit, with slug snippet below.
+  - **Category**: Stylish pill badge (e.g., `Community Impact`, `Healthcare`).
+  - **Author**: Author avatar with name and email tooltip.
+  - **Status Badge**:
+    - `published` (Emerald badge / Tag)
+    - `draft` (Amber badge / Tag)
+    - `archived` (Slate/Gray badge / Tag)
+    - Clicking the status pill or dropdown triggers `PATCH /blog/status/:id` with `{ "status": "published" | "draft" | "archived" }`.
+  - **Featured Spotlight Toggle**:
+    - Star button calling `PATCH /blog/featured/:id` with loading state and instant optimistic UI feedback.
+  - **Publication Date**: Formatted date (e.g., "Aug 15, 2026").
+  - **Actions Menu (Dropdown / Button group)**:
+    - `Edit Post`: navigates to `/admin/blogs/edit/:id`.
+    - `Preview on Site`: opens public `/blogs/[slug]` in a new tab.
+    - `Delete Post`: pops a danger confirmation modal:
+      *"Are you sure you want to delete this blog post? The featured cover image will be removed from disk storage and this action cannot be undone."*
+      Calls `DELETE /blog/:id`.
+
+---
+
+#### 3. CREATE & EDIT BLOG EDITOR (`/admin/blogs/create` & `/admin/blogs/edit/:id`)
+- Build a modern split-pane or two-column layout (Editorial Canvas on the left, Publishing Controls on the right sidebar):
+  - **Left Main Canvas (Content)**:
+    - **Title Input**: Large borderless headline input (`font-display`, text-2xl/text-3xl font-bold).
+    - **Rich Text Editor**: Use TipTap, React-Quill, or EditorJS with support for:
+      - Headings (H2, H3), Paragraphs, Blockquotes, Bullet & Numbered lists.
+      - Image embeds, Links, Code blocks, Horizontal dividers.
+  - **Right Sidebar (Publishing Settings)**:
+    - **Cover Image Upload (Dropzone)**:
+      - Drag-and-drop zone with immediate preview.
+      - Supports JPG, PNG, WEBP.
+      - "Remove" / "Change Cover" actions.
+    - **Category Selector**:
+      - Select dropdown populated from `GET /blog-category`.
+      - Includes a `+ Add New Category` quick-action button that opens a mini-modal without losing form state.
+    - **Tags Input**:
+      - Multi-tag input with auto-complete or tag pills (comma-separated or string array).
+    - **Publishing Status**:
+      - Radio/Select group: `draft`, `published`, `archived`.
+    - **Feature in Spotlight Switch**:
+      - Toggle with star icon: *"Pin article to homepage & blog hero spotlight"*.
+    - **Action Buttons**:
+      - `Save as Draft` (calls `POST /blog` or `PATCH /blog/:id` with `status: "draft"`).
+      - `Publish Now` (calls with `status: "published"`).
+      - Form submission uses `multipart/form-data` passing `title`, `content`, `category`, `image` (file), `tags`, `status`, `isFeatured`.
+
+---
+
+#### 4. CATEGORY MANAGEMENT (`/admin/blog-categories` or Drawer)
+- Minimal and lightning-fast: Categories have strictly `name` and `slug`.
+- Fetch list via `GET /blog-category`.
+- Table columns:
+  - **Category Name**: Bold title.
+  - **Slug**: Code pill (e.g. `/community-impact`).
+  - **Article Count (`blogCount`)**: Pill counter showing how many blogs use this category.
+  - **Created Date**: Formatted date.
+  - **Actions**:
+    - `Edit`: modal to rename category (`PATCH /blog-category/:id` with `{ name: string }`).
+    - `Delete`: calls `DELETE /blog-category/:id`. If `blogCount > 0`, backend will block deletion with a clear notice. Show friendly warning toast!
+- Create Category Form:
+  - Input field for `name`. Auto-generates slug on the backend!
+```
+
+================================================================================
+PART 2: COPY-PASTE PROMPT FOR PUBLIC WEBSITE
+================================================================================
+```markdown
+### TASK: Build Premium Editorial Blog Section on Public Website
+
+Build a magazine-quality, modern, and engaging Blog platform for the user-facing website:
+1. **Blogs Directory Page** (`/blogs` or `/[lang]/blogs`)
+2. **Single Blog Reading Experience** (`/blogs/[slug]` or `/[lang]/blogs/[slug]`)
+
+---
+
+#### 1. BLOGS DIRECTORY (`/blogs`)
+- **Editorial Hero Section**:
+  - Ambient background glow / aurora mesh gradient (`bg-sand-soft/80 via-cream to-cream`).
+  - Subtitle badge: `"Insights & Dispatches"`.
+  - Main Heading: `"Stories of Impact, Transparency & Hope from Haiti"`.
+  - Subheading: Narrative explaining how field updates and project milestones are transparently documented.
+  - Real-time search bar with instant filter and search debounce.
+
+- **Featured Article Spotlight Carousel / Hero Card**:
+  - Highlights the most recent article where `isFeatured === true`.
+  - Large horizontal magazine card:
+    - Left/Top: High-resolution cover photo with smooth hover zoom.
+    - Right/Bottom: Category tag, read time estimate (e.g. `"5 min read"`), publication date, bold title, excerpt preview, author avatar with name, and an `"Read Full Story →"` button.
+
+- **Category Navigation Tabs**:
+  - Horizontal scrollable pills:
+    - `"All Articles"` (shows total count)
+    - Dynamic category pills fetched from `GET /blog-category` showing category name and count badge: e.g. `"Community Outreach (8)"`, `"Education (5)"`.
+  - Clicking a category filters the articles via `GET /blog?category=[categoryIdOrSlug]`.
+
+- **Articles Masonry / Responsive Grid (3 columns on desktop, 2 on tablet, 1 on mobile)**:
+  - Glass/Clean card design with subtle border (`border-hairline/60`):
+    - **Cover Photo**: 16:10 aspect ratio with hover scale animation.
+    - **Category Badge**: Top-left pill overlay (e.g. `"Healthcare"`).
+    - **Metadata Row**: Publication date + Estimated read time.
+    - **Article Title**: Bold typography (`font-display text-lg sm:text-xl font-bold line-clamp-2 hover:text-forest`).
+    - **Excerpt**: 2-3 line clamp of article text summary.
+    - **Author & CTA Footer**: Author avatar, author name, and arrow icon that glides on card hover.
+  - Pagination / Load More button supporting `page` and `limit`.
+  - Empty state with clean SVG illustration when no articles match search/filter.
+
+---
+
+#### 2. SINGLE BLOG POST READING EXPERIENCE (`/blogs/[slug]`)
+- Fetch single blog via `GET /blog/[slug]`.
+- **Top Navigation & Breadcrumbs**:
+  - `"← Back to All Articles  /  [Category Name]"`
+- **Article Header**:
+  - Category pill badge & Featured Star (if featured).
+  - Main Article Headline (`font-display text-3xl sm:text-5xl md:text-6xl font-extrabold tracking-tight text-forest-deep`).
+  - **Author & Meta Bar**:
+    - Author avatar photo, author name, author title/email.
+    - Publication date (formatted).
+    - Estimated reading time.
+    - Share buttons (Copy Link with toast feedback, Twitter/X, Facebook, LinkedIn, WhatsApp).
+- **Featured Hero Image**:
+  - Full-width editorial image container with subtle drop shadow and rounded corners (`rounded-3xl`).
+- **Article Body Layout**:
+  - Centered reading column (`max-w-3xl mx-auto`).
+  - Typography styled with `@tailwindcss/typography` (`prose prose-lg prose-forest max-w-none`):
+    - Elegant headings with anchor links.
+    - Styled blockquotes with left border accent in Haitian sand/emerald.
+    - High-res embedded images with subtle captions.
+    - Responsive code blocks and formatted tables.
+- **Article Tags**:
+  - Render tag chips at bottom of post: `#Community`, `#Healthcare`, `#HaitiOutreach`.
+- **Author Bio Card**:
+  - Box at the end of the post featuring author image, name, and mission statement.
+- **Related Articles Section**:
+  - `"More from our Field Updates"`:
+  - 3 related articles from the same category or latest featured posts.
+```
+
+================================================================================
+PART 3: BACKEND API CHEAT SHEET & DATA CONTRACTS
+================================================================================
+
+--------------------------------------------------------------------------------
+A. BLOG CATEGORY API ENDPOINTS
+--------------------------------------------------------------------------------
+
+1. GET ALL CATEGORIES
+   - URL: `GET /blog-category` or `GET /blogcategory`
+   - Access: Public
+   - Query: `searchTerm`, `sort` (default: 'name')
+   - Response:
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Blog categories fetched successfully",
+       "data": [
+         {
+           "_id": "67cb1a2b3c4d5e6f7a8b9c01",
+           "name": "Community Impact",
+           "slug": "community-impact",
+           "blogCount": 8,
+           "createdAt": "2026-08-15T10:00:00.000Z",
+           "updatedAt": "2026-08-15T10:00:00.000Z"
+         }
+       ]
+     }
+     ```
+
+2. GET SINGLE CATEGORY
+   - URL: `GET /blog-category/:idOrSlug`
+   - Access: Public
+   - Response: Category object with `blogCount`.
+
+3. CREATE CATEGORY
+   - URL: `POST /blog-category`
+   - Access: Admin, SuperAdmin (Bearer Token)
+   - Headers: `Content-Type: application/json`
+   - Body:
+     ```json
+     {
+       "name": "Healthcare Initiatives"
+     }
+     ```
+   - Response: 201 Created (Auto-generates unique slug).
+
+4. UPDATE CATEGORY
+   - URL: `PATCH /blog-category/:id`
+   - Access: Admin, SuperAdmin
+   - Body: `{ "name": "Updated Category Name" }`
+   - Response: 200 OK (Regenerates slug if name is changed).
+
+5. DELETE CATEGORY
+   - URL: `DELETE /blog-category/:id`
+   - Access: Admin, SuperAdmin
+   - Response: 200 OK.
+   - Note: Safely prevented if any blogs are linked to this category.
+
+--------------------------------------------------------------------------------
+B. BLOG POSTS API ENDPOINTS
+--------------------------------------------------------------------------------
+
+1. GET ALL BLOGS
+   - URL: `GET /blog` or `GET /blogs`
+   - Access: Public (Public gets only `published`; Admins get `draft`, `published`, `archived`)
+   - Query Parameters:
+     - `page`: number (default: 1)
+     - `limit`: number (default: 10)
+     - `searchTerm`: string (searches in `title` and `content`)
+     - `category`: string (Category ObjectId or category slug)
+     - `status`: "published" | "draft" | "archived" (Admin only)
+     - `isFeatured`: boolean
+     - `sort`: string (default: "-publishedAt -createdAt")
+   - Response:
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Blogs fetched successfully",
+       "pagination": { "page": 1, "limit": 10, "total": 24, "totalPage": 3 },
+       "data": [
+         {
+           "_id": "67cb2b3c4d5e6f7a8b9c02",
+           "title": "Empowering Local Farmers in Artibonite",
+           "slug": "empowering-local-farmers-in-artibonite",
+           "content": "<p>Detailed story HTML or Markdown content...</p>",
+           "image": "/image/farmers-17890123.jpg",
+           "category": {
+             "_id": "67cb1a...",
+             "name": "Agriculture & Food",
+             "slug": "agriculture-food"
+           },
+           "author": {
+             "_id": "67cb0a...",
+             "name": "Jean-Pierre Duval",
+             "email": "jp@ifundayiti.org",
+             "image": "/image/avatar-12.jpg"
+           },
+           "tags": ["Agriculture", "Micro-grants", "Artibonite"],
+           "status": "published",
+           "isFeatured": true,
+           "publishedAt": "2026-08-20T14:30:00.000Z",
+           "createdAt": "2026-08-20T12:00:00.000Z"
+         }
+       ]
+     }
+     ```
+
+2. GET SINGLE BLOG
+   - URL: `GET /blog/:idOrSlug`
+   - Access: Public (Accepts either ObjectId or unique slug!)
+   - Public visitors receive 404 if post is in `draft` or `archived` status.
+   - Admins can preview any post status.
+
+3. CREATE BLOG
+   - URL: `POST /blog`
+   - Access: Admin, SuperAdmin
+   - Content-Type: `multipart/form-data`
+   - Form Fields:
+     - `title`: string (Required)
+     - `content`: string (Required, rich text HTML)
+     - `category`: string (Required, Category ObjectId)
+     - `image`: File (Optional cover photo)
+     - `tags`: string[] or comma-separated string (Optional)
+     - `status`: "draft" | "published" | "archived" (Optional, default: "draft")
+     - `isFeatured`: boolean (Optional, default: false)
+     - `author`: string (Optional - automatically set to current admin's User ID if omitted)
+   - Response: 201 Created
+
+4. UPDATE BLOG
+   - URL: `PATCH /blog/:id`
+   - Access: Admin, SuperAdmin
+   - Content-Type: `multipart/form-data`
+   - Form Fields: Any fields to update. If a new `image` is uploaded, old file is purged from disk.
+   - Response: 200 OK
+
+5. QUICK UPDATE STATUS
+   - URL: `PATCH /blog/status/:id`
+   - Access: Admin, SuperAdmin
+   - Headers: `Content-Type: application/json`
+   - Body: `{ "status": "published" }` ("published" | "draft" | "archived")
+   - Response: 200 OK (Automatically sets `publishedAt = new Date()` on first publish)
+
+6. QUICK TOGGLE FEATURED
+   - URL: `PATCH /blog/featured/:id`
+   - Access: Admin, SuperAdmin
+   - Headers: `Content-Type: application/json`
+   - Body: `{}`
+   - Response: 200 OK (Toggles boolean flag)
+
+7. GET STATS
+   - URL: `GET /blog/stats`
+   - Access: Admin, SuperAdmin
+   - Response: `{ statusCode: 200, success: true, data: { total: 24, published: 18, draft: 4, archived: 2, featured: 5 } }`
+
+8. DELETE BLOG
+   - URL: `DELETE /blog/:id`
+   - Access: Admin, SuperAdmin
+   - Response: 200 OK (Unlinks physical cover photo from disk and removes database entry)
+
+================================================================================
+PART 4: TYPESCRIPT DATA MODELS
+================================================================================
+
+```typescript
+export const BLOG_STATUS = {
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived',
+} as const;
+
+export type BLOG_STATUS = (typeof BLOG_STATUS)[keyof typeof BLOG_STATUS];
+
+export interface IBlogCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  blogCount?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IBlog {
+  _id: string;
+  title: string;
+  slug: string;
+  content: string;
+  image?: string;
+  category: {
+    _id: string;
+    name: string;
+    slug: string;
+  } | string;
+  author: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+  } | string;
+  tags?: string[];
+  status: BLOG_STATUS;
+  isFeatured: boolean;
+  publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IBlogStats {
+  total: number;
+  published: number;
+  draft: number;
+  archived: number;
+  featured: number;
+}
+```
+================================================================================

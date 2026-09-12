@@ -28,7 +28,10 @@ import { GalleryRoutes } from '../app/modules/gallery/gallery.route';
 import { ProductcategoryRoutes } from '../app/modules/productcategory/productcategory.route';
 import { PartnerRoutes } from '../app/modules/partner/partner.route';
 import { FolderRoutes } from '../app/modules/folder/folder.route';
+import { BlogRoutes } from '../app/modules/blogs/blog/blog.route';
+import { BlogCategoryRoutes } from '../app/modules/blogs/blogcategory/blogcategory.route';
 const router = express.Router();
+
 
 const apiRoutes = [
   {
@@ -153,7 +156,24 @@ const apiRoutes = [
     path: '/folder',
     route: FolderRoutes,
   },
+  {
+    path: '/blog',
+    route: BlogRoutes,
+  },
+  {
+    path: '/blogs',
+    route: BlogRoutes,
+  },
+  {
+    path: '/blog-category',
+    route: BlogCategoryRoutes,
+  },
+  {
+    path: '/blogcategory',
+    route: BlogCategoryRoutes,
+  },
 ];
+
 
 apiRoutes.forEach(route => router.use(route.path, route.route));
 
