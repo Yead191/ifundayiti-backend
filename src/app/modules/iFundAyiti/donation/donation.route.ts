@@ -9,13 +9,39 @@ const router = express.Router();
 
 router
   .route('/')
-  .post(validateRequest(DonationValidations.createDonationSchema), DonationController.createDonation)
-  .get(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), DonationController.getAllDonations);
+  .post(
+    validateRequest(DonationValidations.createDonationSchema),
+    DonationController.createDonation,
+  )
+  .get(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    DonationController.getAllDonations,
+  );
 
-router.get("/webhook", DonationController.handleWebhook)
-router.route('/fund-stats').get(auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN), DonationController.getFundStats);
+router.get(
+  '/fund-stats',
+  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+  DonationController.getFundStats,
+);
 
+router.delete(
+  '/delete-multiple',
+  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+  validateRequest(DonationValidations.deleteMultipleDonationsSchema),
+  DonationController.deleteMultipleDonations,
+);
+
+router.get('/webhook', DonationController.handleWebhook);
+
+router
+  .route('/:id')
+  .get(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    DonationController.getSingleDonation,
+  )
+  .delete(
+    auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+    DonationController.deleteDonation,
+  );
 
 export const DonationRoutes = router;
-
-// http://localhost:5000/api/v1/donation/webhook?status=failed

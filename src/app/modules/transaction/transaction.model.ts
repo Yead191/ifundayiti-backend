@@ -11,6 +11,12 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: false,
+      default: 0,
     },
     total_price: {
       type: Number,
@@ -21,7 +27,6 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>(
       required: false,
       default: 0,
     },
-
     discount_percentage: {
       type: Number,
       required: false,
@@ -43,6 +48,16 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>(
     },
     transaction_id: {
       type: String,
+      trim: true,
+    },
+    payment_intent_id: {
+      type: String,
+      trim: true,
+    },
+    payment_method: {
+      type: String,
+      trim: true,
+      default: 'stripe',
     },
     status: {
       type: String,
@@ -66,6 +81,32 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>(
   },
   { timestamps: true },
 );
+
+// Pre-save synchronization hook to keep amount, total_price, and payment_received consistent
+transactionSchema.pre('save', function (next) {
+  if (!this.total_price && this.amount) {
+    this.total_price = this.amount;
+  }
+  if (!this.amount && this.total_price) {
+    this.amount = this.total_price;
+  }
+  if (!this.payment_received && this.total_price) {
+    this.payment_received = this.total_price;
+  }
+  if (!this.transaction_id && this.payment_intent_id) {
+    this.transaction_id = this.payment_intent_id;
+  }
+  next();
+});
+
+// Database indexes for high performance querying and dashboard filtering
+transactionSchema.index({ createdAt: -1 });
+transactionSchema.index({ user: 1 });
+transactionSchema.index({ status: 1 });
+transactionSchema.index({ category: 1 });
+transactionSchema.index({ type: 1 });
+transactionSchema.index({ transaction_id: 1 });
+transactionSchema.index({ order: 1 });
 
 export const Transaction = model<ITransaction, TransactionModel>(
   'Transaction',

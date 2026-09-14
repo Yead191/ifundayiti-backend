@@ -32,7 +32,6 @@ import { BlogRoutes } from '../app/modules/blogs/blog/blog.route';
 import { BlogCategoryRoutes } from '../app/modules/blogs/blogcategory/blogcategory.route';
 const router = express.Router();
 
-
 const apiRoutes = [
   {
     path: '/user',
@@ -173,7 +172,6 @@ const apiRoutes = [
     route: BlogCategoryRoutes,
   },
 ];
-
 
 apiRoutes.forEach(route => router.use(route.path, route.route));
 

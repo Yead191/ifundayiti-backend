@@ -1,0 +1,346 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: DONATION & FUND SYSTEM
+(FOR ADMIN DASHBOARD & PUBLIC WEBSITE)
+================================================================================
+
+Target Applications:
+  1. Admin Dashboard (/admin/donations or /admin/fund-transactions)
+  2. Public User Website (/donate, /transparency, or /fund)
+Base API URLs:
+  - Donations & Fund Transactions: `/donation` (e.g. `http://localhost:5000/api/v1/donation`)
+
+================================================================================
+EXECUTIVE SUMMARY: WHAT WAS FIXED & ENHANCED
+================================================================================
+1. **Deletion Capabilities Added**:
+   - `DELETE /donation/:id` — Safely deletes a single donation or grant transaction record from database history and automatically synchronizes the `ProgramFund` balance.
+   - `DELETE /donation/delete-multiple` — Supports batch selecting rows on the admin dashboard and deleting multiple transaction records simultaneously.
+2. **Detailed Transaction Fetch Added**:
+   - `GET /donation/:id` — Enables admin to open an in-depth Transaction Detail Drawer/Modal with populated applicant information, project title, and grant period.
+3. **Optimized Search & Sorting**:
+   - Added database indexes on `createdAt: -1`, `type: 1`, `email: 1`, and `transactionId: 1`.
+   - Default sorting defaults to newest first (`-createdAt`).
+   - Cleaned up search fields to match actual schema root attributes (`name`, `email`, `transactionId`).
+4. **Enriched Fund Stats (`GET /donation/fund-stats`)**:
+   - Now returns not only `balance`, `totalDonations`, and `totalGrants`, but also `donationCount`, `grantCount`, `totalCount`, and `programFundBalance`.
+5. **Cleaned Up Unused Parameters**:
+   - Removed obsolete hardcoded local IP address (`10.10.26.173`) from controller arguments.
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium Donations & Fund Management in Admin Dashboard
+
+Implement a high-end, financial-grade Fund Transactions & Donations Management section in the Admin Dashboard (`/admin/donations` or `/admin/fund-transactions`).
+
+---
+
+#### 1. FUND OVERVIEW & STATS WIDGETS
+- Fetch fund statistics using `GET /donation/fund-stats`.
+- Render 4 top-tier GlassCard metric widgets with Ant Design icons and subtle border gradients:
+  - **Net Available Fund Balance**:
+    - Value: `$balance` (formatted as currency: `$XX,XXX.XX`).
+    - Subtitle: Current liquidity available for disbursement.
+    - Icon: `WalletOutlined` (Emerald theme).
+  - **Total Donations Received**:
+    - Value: `$totalDonations` (formatted as `$XX,XXX.XX`).
+    - Subtitle: `${donationCount} contributions from global donors`.
+    - Icon: `RiseOutlined` (Sky blue / Teal theme).
+  - **Total Grants Disbursed**:
+    - Value: `$totalGrants` (formatted as `$XX,XXX.XX`).
+    - Subtitle: `${grantCount} grants awarded to local projects`.
+    - Icon: `GiftOutlined` (Amber theme).
+  - **Total Transaction Volume**:
+    - Value: `${totalCount} records`.
+    - Subtitle: Combined donation inflows and grant outflows.
+    - Icon: `SwapOutlined` (Indigo theme).
+
+---
+
+#### 2. TRANSACTIONS DATA TABLE & FILTERS
+- Fetch transactions using `GET /donation` (supports pagination, search, and type filters).
+- **Toolbar & Filter Controls**:
+  - **Search Input**: Real-time debounced search by donor name, email, or Stripe transaction ID.
+  - **Type Tabs / Segmented Control**:
+    - `All Transactions`
+    - `Donations Inflow` (filters `?type=donation`)
+    - `Grants Outflow` (filters `?type=grant`)
+  - **Batch Delete Button** (appears when rows are selected):
+    - Shows `Delete Selected (${count})`.
+    - Triggers confirmation modal and calls `DELETE /donation/delete-multiple` with `{ "ids": string[] }`.
+  - **Refresh Button & Export CSV Action**.
+
+- **Table Columns**:
+  1. **Transaction ID / Reference**:
+     - Monospace code chip (e.g. `cs_live_...` or `cs_test_...`).
+     - Copy button on hover.
+  2. **Type**:
+     - `Donation`: Emerald pill tag (`+ $Amount`, with `ArrowDownLeftOutlined` icon).
+     - `Grant`: Amber pill tag (`- $Amount`, with `ArrowUpRightOutlined` icon).
+  3. **Donor / Recipient**:
+     - If Donation: Donor Name & Email.
+     - If Grant: Admin name or Applicant Project Title (from populated `applicant.personal` and `applicant.projectTitle`).
+  4. **Amount**:
+     - Bold styled currency (`+$50.00` in green for donations, `-$500.00` in amber for grants).
+  5. **Date & Time**:
+     - Formatted creation date (e.g., "Sep 14, 2026 • 11:15 AM").
+  6. **Actions**:
+     - **View Details**: Opens Transaction Detail Drawer (`GET /donation/:id`).
+     - **Delete**: Prompts warning modal:
+       *"Are you sure you want to delete this donation record? This will purge the record from transaction history and synchronize fund balance calculations."*
+       Calls `DELETE /donation/:id`.
+
+---
+
+#### 3. TRANSACTION DETAIL DRAWER (`GET /donation/:id`)
+- Slide-out side drawer displaying full receipt / audit details:
+  - Large amount header with status badge.
+  - Stripe Checkout Session ID / Transaction Reference.
+  - Donor Information: Name, Email address, Timestamp.
+  - If Grant: Awarded Applicant Name, Project Title, Success Story Quote, and Application Period title.
+  - Action buttons: "Print Receipt / PDF", "Delete Record".
+```
+
+================================================================================
+PART 2: COPY-PASTE PROMPT FOR PUBLIC WEBSITE
+================================================================================
+```markdown
+### TASK: Build Public Donation Experience on Website
+
+Build a seamless, trustworthy Donation & Transparency experience on the website:
+1. **Donation Page** (`/donate` or `/[lang]/donate`)
+2. **Fund Transparency Ticker** (`/transparency` or integrated widget on `/fund`)
+
+---
+
+#### 1. PUBLIC DONATE SECTION
+- **Preset Donation Amounts Grid**:
+  - Selectable chips: `$25`, `$50`, `$100`, `$250`, `$500`, and a custom amount input.
+- **Donor Form**:
+  - Fields: `name` (required), `email` (required).
+  - Anonymous donation checkbox option.
+- **Submit Action**:
+  - Calls `POST /donation` with `{ name, email, amount }`.
+  - Receives `{ data: { paymentUrl: string } }`.
+  - Automatically redirects the donor to Stripe Checkout (`paymentUrl`).
+- **Post-Payment Redirects**:
+  - On payment success: Redirects to `/payment/success?type=donation`.
+  - On payment failure / cancel: Redirects to `/payment/failed?type=donation`.
+
+---
+
+#### 2. LIVE FUND TRANSPARENCY TICKER
+- Fetch live statistics using `GET /donation/fund-stats`.
+- Display a public trust banner:
+  - *"100% Transparency: $XX,XXX raised across XX contributions, with $XX,XXX directly funded to local Haitian entrepreneurs and students."*
+```
+
+================================================================================
+PART 3: BACKEND API CHEAT SHEET & DATA CONTRACTS
+================================================================================
+
+BASE URL:
+  - http://localhost:5000/api/v1 (or production base URL)
+  - `/donation` (or `/donations`)
+
+--------------------------------------------------------------------------------
+1. GET ALL DONATIONS & GRANTS
+--------------------------------------------------------------------------------
+- Method: GET /donation
+- Access: ADMIN, SUPER_ADMIN
+- Query Parameters:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (searches `name`, `email`, `transactionId`)
+  - `type`: "donation" | "grant" (filter by transaction type)
+  - `sort`: string (default: "-createdAt")
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Donations fetched successfully",
+    "pagination": { "page": 1, "limit": 10, "total": 45, "totalPage": 5 },
+    "data": [
+      {
+        "_id": "67cc1a2b3c4d5e6f7a8b9c01",
+        "name": "Sarah Connor",
+        "email": "sarah@example.com",
+        "amount": 100,
+        "transactionId": "cs_test_a1b2c3d4e5f6g7h8",
+        "type": "donation",
+        "createdAt": "2026-09-14T09:30:00.000Z",
+        "updatedAt": "2026-09-14T09:30:00.000Z"
+      },
+      {
+        "_id": "67cc2b3c4d5e6f7a8b9c02",
+        "name": "Super Admin",
+        "email": "admin@ifundayiti.org",
+        "amount": 500,
+        "type": "grant",
+        "applicant": {
+          "_id": "67cb9a...",
+          "projectTitle": "Clean Solar Water in Cap-Haïtien",
+          "awardedAmount": 500,
+          "status": "winner",
+          "personal": {
+            "firstName": "Jean",
+            "lastName": "Baptiste"
+          },
+          "applicationPeriod": {
+            "_id": "67ca8b...",
+            "title": "Summer 2026 Community Grants"
+          }
+        },
+        "createdAt": "2026-09-12T14:15:00.000Z"
+      }
+    ]
+  }
+  ```
+
+--------------------------------------------------------------------------------
+2. GET FUND STATISTICS
+--------------------------------------------------------------------------------
+- Method: GET /donation/fund-stats
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Fund stats fetched successfully",
+    "data": {
+      "balance": 14500,
+      "programFundBalance": 14500,
+      "totalDonations": 24500,
+      "totalGrants": 10000,
+      "donationCount": 84,
+      "grantCount": 12,
+      "totalCount": 96
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+3. GET SINGLE DONATION DETAILS
+--------------------------------------------------------------------------------
+- Method: GET /donation/:id
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK): Returns populated transaction details including applicant & period info.
+
+--------------------------------------------------------------------------------
+4. CREATE DONATION (STRIPE CHECKOUT)
+--------------------------------------------------------------------------------
+- Method: POST /donation
+- Access: Public
+- Headers: `Content-Type: application/json`
+- Request Body:
+  ```json
+  {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "amount": 50
+  }
+  ```
+- Response (201 Created):
+  ```json
+  {
+    "statusCode": 201,
+    "success": true,
+    "message": "Donation checkout session created",
+    "data": {
+      "paymentUrl": "https://checkout.stripe.com/c/pay/cs_test_..."
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+5. DELETE SINGLE DONATION RECORD
+--------------------------------------------------------------------------------
+- Method: DELETE /donation/:id
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Donation record deleted successfully",
+    "data": { ...deletedDonationObject }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+6. BATCH DELETE MULTIPLE DONATION RECORDS
+--------------------------------------------------------------------------------
+- Method: DELETE /donation/delete-multiple
+- Access: ADMIN, SUPER_ADMIN
+- Headers: `Content-Type: application/json`
+- Request Body:
+  ```json
+  {
+    "ids": [
+      "67cc1a2b3c4d5e6f7a8b9c01",
+      "67cc2b3c4d5e6f7a8b9c02"
+    ]
+  }
+  ```
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "2 donation record(s) deleted successfully",
+    "data": {
+      "deletedCount": 2
+    }
+  }
+  ```
+
+================================================================================
+PART 4: TYPESCRIPT DATA MODELS
+================================================================================
+
+```typescript
+export interface IDonation {
+  _id: string;
+  name: string;
+  email: string;
+  amount: number;
+  transactionId?: string;
+  type: 'donation' | 'grant';
+  applicant?: {
+    _id: string;
+    projectTitle?: string;
+    awardedAmount?: number;
+    status?: string;
+    quote?: string;
+    successStory?: string;
+    personal?: {
+      firstName?: string;
+      lastName?: string;
+      email?: string;
+      phone?: string;
+    };
+    applicationPeriod?: {
+      _id: string;
+      title?: string;
+      startDate?: string;
+      endDate?: string;
+    };
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IFundStats {
+  balance: number;
+  programFundBalance: number;
+  totalDonations: number;
+  totalGrants: number;
+  donationCount: number;
+  grantCount: number;
+  totalCount: number;
+}
+```
+================================================================================

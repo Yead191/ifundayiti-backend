@@ -1,0 +1,362 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: TRANSACTION SYSTEM
+(FOR ADMIN DASHBOARD & USER PORTAL)
+================================================================================
+
+Target Applications:
+  1. Admin Dashboard (/admin/transactions or /admin/financials)
+  2. User Account / Portal (/dashboard/transactions or /account/billing)
+Base API URLs:
+  - Transactions: `/transaction` (e.g. `http://localhost:5000/api/v1/transaction`)
+
+================================================================================
+EXECUTIVE SUMMARY: WHAT WAS FIXED & ENHANCED
+================================================================================
+1. **Regex Search Bug Fixed**:
+   - Fixed invalid `$regex` query on number field (`total_price`), which caused MongoDB search queries to fail. Search now properly queries string fields (`transaction_id`, `payment_intent_id`, `payment_method`).
+2. **QueryBuilder Chain Order Fixed**:
+   - Corrected chain order to `search -> filter -> sort -> paginate -> fields` instead of calling `.paginate()` before filtering and sorting.
+3. **Data Consistency & Missing Attributes Added**:
+   - Synchronized `amount`, `payment_intent_id`, and `payment_method` with `total_price` and `transaction_id` using a pre-save hook.
+4. **Order & User Population**:
+   - Populated both `user` (`name`, `email`, `image`, `role`) and `order` (`orderNumber`, `totalAmount`, `status`, `deliveryStatus`, `paymentStatus`, `createdAt`, `items`) so transactions link directly to orders.
+5. **Comprehensive Stats Added (`GET /transaction/stats`)**:
+   - Aggregates `totalRevenue`, `shopRevenue`, `membershipRevenue`, `totalTransactions`, `successfulTransactions`, `pendingTransactions`, `failedTransactions`, `creditTransactions`, and `debitTransactions`.
+6. **Detailed Transaction Fetch Added (`GET /transaction/:id`)**:
+   - Allows viewing complete transaction breakdown with user and order details. Admins can view any transaction; regular users can securely view their own transactions.
+7. **Deletion Capabilities Added**:
+   - `DELETE /transaction/:id` — Admin can delete a single transaction record.
+   - `DELETE /transaction/delete-multiple` — Admin can batch select rows and delete multiple transaction records.
+8. **Indexes & Route Alias**:
+   - Added MongoDB indexes on `createdAt: -1`, `user: 1`, `status: 1`, `category: 1`, `type: 1`, `transaction_id: 1`, and `order: 1`.
+   - Added `/transactions` route alias in addition to `/transaction`.
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium Financial Transactions Management in Admin Dashboard
+
+Implement a high-end, Stripe-inspired Financial Transactions Management section in the Admin Dashboard (`/admin/transactions`).
+
+---
+
+#### 1. REVENUE & TRANSACTION STATS WIDGETS
+- Fetch overall transaction statistics using `GET /transaction/stats`.
+- Render 4 top-tier GlassCard metric widgets with Ant Design icons and subtle border gradients:
+  - **Total Gross Revenue**:
+    - Value: `$totalRevenue` (formatted as `$XX,XXX.XX`).
+    - Subtitle: `${successfulTransactions} successful payments`.
+    - Icon: `DollarCircleFilled` (Emerald theme).
+  - **Shop / Merchandise Revenue**:
+    - Value: `$shopRevenue` (formatted as `$XX,XXX.XX`).
+    - Subtitle: Direct store & product sales.
+    - Icon: `ShoppingFilled` (Sky blue / Indigo theme).
+  - **Membership Subscriptions**:
+    - Value: `$membershipRevenue` (formatted as `$XX,XXX.XX`).
+    - Subtitle: Recurring membership contributions.
+    - Icon: `CrownFilled` (Amber theme).
+  - **Transaction Health & Volume**:
+    - Value: `${totalTransactions} total events`.
+    - Subtitle: `${pendingTransactions} Pending • ${failedTransactions} Failed`.
+    - Icon: `SafetyCertificateFilled` (Teal theme).
+
+---
+
+#### 2. TRANSACTIONS DATA TABLE & FILTERS
+- Fetch transactions using `GET /transaction` (supports pagination, search, category, status, and type filters).
+- **Toolbar & Filter Controls**:
+  - **Search Input**: Real-time debounced search by Stripe Transaction ID, Payment Intent ID, or payment method.
+  - **Category Filter Tabs / Segmented Control**:
+    - `All Categories`
+    - `Shop` (filters `?category=Shop`)
+    - `Membership` (filters `?category=Membership`)
+    - `Service` (filters `?category=Service`)
+  - **Status Filter Dropdown**: `All`, `Success`, `Pending`, `Failed`.
+  - **Type Filter**: `Credit` vs `Debit`.
+  - **Batch Delete Button** (appears when rows are selected):
+    - Shows `Delete Selected (${count})`.
+    - Triggers confirmation modal and calls `DELETE /transaction/delete-multiple` with `{ "ids": string[] }`.
+  - **Refresh Button & Export CSV Button**.
+
+- **Table Columns**:
+  1. **Transaction ID / Reference**:
+     - Monospace code chip (e.g. `sub_1Q...` or `pi_3M...`).
+     - Copy icon on hover.
+  2. **Customer / User**:
+     - Avatar with User Name & Email.
+     - Click user to view profile.
+  3. **Category**:
+     - `Shop`: Indigo pill tag with shopping bag icon.
+     - `Membership`: Amber pill tag with crown icon.
+     - `Service`: Teal pill tag with tool icon.
+  4. **Amount**:
+     - Displays formatted currency:
+       - Credit: Green `+$XX.XX`
+       - Debit: Slate `-$XX.XX`
+     - Tooltip showing original `total_price` vs `discount_amount` vs `platform_fee`.
+  5. **Status**:
+     - `Success`: Emerald tag with check icon.
+     - `Pending`: Amber tag with clock icon.
+     - `Failed`: Red tag with close icon.
+  6. **Linked Order**:
+     - If linked to an order: Clickable badge with `orderNumber` (e.g. `ORD-2026-0042`) navigating to order details.
+  7. **Date & Time**:
+     - Formatted creation date (e.g. "Sep 14, 2026 • 11:20 AM").
+  8. **Actions**:
+     - **View Details**: Opens slide-out Transaction Detail Drawer (`GET /transaction/:id`).
+     - **Delete**: Prompts warning modal:
+       *"Are you sure you want to delete this transaction record? This action will remove it from transaction history."*
+       Calls `DELETE /transaction/:id`.
+
+---
+
+#### 3. TRANSACTION DETAIL DRAWER (`GET /transaction/:id`)
+- Slide-out side drawer displaying full financial audit breakdown:
+  - Header: Transaction ID, Category, Status badge, Timestamp.
+  - Amount Breakdown Card:
+    - Base / Total Price
+    - Discount Applied (`discount_percentage`% / -`$discount_amount`)
+    - Net Payment Received
+    - Platform Fee
+  - Customer Card: Avatar, Name, Email, Role.
+  - Linked Order Card (if Shop category): Order Number, Order Status, Delivery Status, Items preview.
+  - Payment Details: Payment Method (`stripe`), Payment Intent ID, Previous Transaction ID (if recurring).
+  - Actions: "Print Receipt / Invoice", "Delete Record".
+```
+
+================================================================================
+PART 2: COPY-PASTE PROMPT FOR USER ACCOUNT PORTAL
+================================================================================
+```markdown
+### TASK: Build User Payment & Billing History in Account Portal
+
+Implement a clean, modern Billing & Transactions History page for logged-in users (`/dashboard/transactions` or `/account/billing`).
+
+---
+
+#### 1. USER TRANSACTIONS LIST
+- Fetch current user transactions using `GET /transaction`.
+  (Backend automatically scopes queries to the logged-in user's own transactions).
+- **Summary Cards**:
+  - Total Spent to Date.
+  - Active Membership Status.
+  - Total Orders Placed.
+- **Transactions Table / List**:
+  - Date & Time.
+  - Description / Category (`Shop Order`, `Membership Plan`, `Digital Product`).
+  - Amount Paid (`$XX.XX`).
+  - Status Tag (`Success`, `Pending`, `Failed`).
+  - Invoice / Receipt: Button to view invoice modal or print receipt.
+  - Linked Order: Click to view tracking and items.
+```
+
+================================================================================
+PART 3: BACKEND API CHEAT SHEET & DATA CONTRACTS
+================================================================================
+
+BASE URL:
+  - http://localhost:5000/api/v1
+  - `/transaction` (or `/transactions`)
+
+--------------------------------------------------------------------------------
+1. GET ALL TRANSACTIONS
+--------------------------------------------------------------------------------
+- Method: GET /transaction
+- Access: Authenticated User (Admins get all transactions; Regular users get their own)
+- Query Parameters:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (searches `transaction_id`, `payment_intent_id`, `payment_method`)
+  - `category`: "Shop" | "Membership" | "Service"
+  - `status`: "Pending" | "Success" | "Failed"
+  - `type`: "Credit" | "Debit"
+  - `sort`: string (default: "-createdAt")
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Transactions fetched successfully",
+    "pagination": { "page": 1, "limit": 10, "total": 28, "totalPage": 3 },
+    "data": [
+      {
+        "_id": "67cc3a2b3c4d5e6f7a8b9c01",
+        "user": {
+          "_id": "67cb1a...",
+          "name": "Jean Duval",
+          "email": "jean@example.com",
+          "image": "/image/avatar-1.jpg",
+          "role": "user"
+        },
+        "order": {
+          "_id": "67cc2b...",
+          "orderNumber": "ORD-2026-0042",
+          "totalAmount": 75.50,
+          "status": "confirmed",
+          "deliveryStatus": "processing"
+        },
+        "amount": 75.50,
+        "total_price": 75.50,
+        "payment_received": 75.50,
+        "discount_percentage": 0,
+        "discount_amount": 0,
+        "platform_fee": 0,
+        "transaction_id": "pi_3MtwxX2eZvKYlo2C01234567",
+        "payment_intent_id": "pi_3MtwxX2eZvKYlo2C01234567",
+        "payment_method": "stripe",
+        "category": "Shop",
+        "type": "Debit",
+        "status": "Success",
+        "createdAt": "2026-09-14T10:15:00.000Z",
+        "updatedAt": "2026-09-14T10:15:00.000Z"
+      }
+    ]
+  }
+  ```
+
+--------------------------------------------------------------------------------
+2. GET TRANSACTION STATS (ADMIN ONLY)
+--------------------------------------------------------------------------------
+- Method: GET /transaction/stats
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Transaction stats fetched successfully",
+    "data": {
+      "totalRevenue": 48250.75,
+      "shopRevenue": 31400.00,
+      "membershipRevenue": 16850.75,
+      "totalTransactions": 342,
+      "successfulTransactions": 328,
+      "pendingTransactions": 9,
+      "failedTransactions": 5,
+      "creditTransactions": 210,
+      "debitTransactions": 132
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+3. GET SINGLE TRANSACTION DETAILS
+--------------------------------------------------------------------------------
+- Method: GET /transaction/:id
+- Access: Authenticated User (Admins can view any; Regular users can view their own)
+- Response (200 OK): Returns complete populated transaction object with `user` and `order` (including items).
+
+--------------------------------------------------------------------------------
+4. DELETE SINGLE TRANSACTION (ADMIN ONLY)
+--------------------------------------------------------------------------------
+- Method: DELETE /transaction/:id
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Transaction deleted successfully",
+    "data": { ...deletedTransactionObject }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+5. BATCH DELETE MULTIPLE TRANSACTIONS (ADMIN ONLY)
+--------------------------------------------------------------------------------
+- Method: DELETE /transaction/delete-multiple
+- Access: ADMIN, SUPER_ADMIN
+- Headers: `Content-Type: application/json`
+- Request Body:
+  ```json
+  {
+    "ids": [
+      "67cc3a2b3c4d5e6f7a8b9c01",
+      "67cc3a2b3c4d5e6f7a8b9c02"
+    ]
+  }
+  ```
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "2 transaction(s) deleted successfully",
+    "data": {
+      "deletedCount": 2
+    }
+  }
+  ```
+
+================================================================================
+PART 4: TYPESCRIPT DATA MODELS
+================================================================================
+
+```typescript
+export enum TRANSACTION_TYPE {
+  CREDIT = 'Credit',
+  DEBIT = 'Debit',
+}
+
+export enum TRANSACTION_STATUS {
+  PENDING = 'Pending',
+  SUCCESS = 'Success',
+  FAILED = 'Failed',
+}
+
+export enum TRANSACTION_CATEGORY {
+  MEMBERSHIP = 'Membership',
+  SHOP = 'Shop',
+  SERVICE = 'Service',
+}
+
+export interface ITransaction {
+  _id: string;
+  user: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+    role?: string;
+  } | string;
+  order?: {
+    _id: string;
+    orderNumber: string;
+    totalAmount: number;
+    status: string;
+    deliveryStatus?: string;
+    paymentStatus?: string;
+    createdAt?: string;
+    items?: any[];
+  } | string;
+  amount?: number;
+  total_price: number;
+  payment_received: number;
+  discount_percentage?: number;
+  discount_amount?: number;
+  platform_fee?: number;
+  transaction_id?: string;
+  payment_intent_id?: string;
+  payment_method?: string;
+  type: TRANSACTION_TYPE;
+  status: TRANSACTION_STATUS;
+  category: TRANSACTION_CATEGORY;
+  prev_transaction_id?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ITransactionStats {
+  totalRevenue: number;
+  shopRevenue: number;
+  membershipRevenue: number;
+  totalTransactions: number;
+  successfulTransactions: number;
+  pendingTransactions: number;
+  failedTransactions: number;
+  creditTransactions: number;
+  debitTransactions: number;
+}
+```
+================================================================================

@@ -5,8 +5,7 @@ import { StatusCodes } from 'http-status-codes';
 import { DonationServices } from './donation.service';
 
 const createDonation = catchAsync(async (req: Request, res: Response) => {
-  const hostUrl = `http://10.10.26.173:5004/api/v1`;
-  const result = await DonationServices.createDonationToDB(req.body, hostUrl);
+  const result = await DonationServices.createDonationToDB(req.body);
   return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.CREATED,
@@ -22,21 +21,57 @@ const getAllDonations = catchAsync(async (req: Request, res: Response) => {
     statusCode: StatusCodes.OK,
     message: 'Donations fetched successfully',
     data: result.transactions,
-    pagination: result.pagination
+    pagination: result.pagination,
   });
 });
 
-const handleWebhook = async (req: Request, res: Response) => {
-  console.log(req.query)
-  const status = req.query.status as string;
+const getSingleDonation = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await DonationServices.getSingleDonationFromDB(id);
+  return sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Donation fetched successfully',
+    data: result,
+  });
+});
 
+const deleteDonation = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await DonationServices.deleteDonationFromDB(id);
+  return sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'Donation record deleted successfully',
+    data: result,
+  });
+});
+
+const deleteMultipleDonations = catchAsync(
+  async (req: Request, res: Response) => {
+    const { ids } = req.body;
+    const result = await DonationServices.deleteMultipleDonationsFromDB(ids);
+    return sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: `${result.deletedCount} donation record(s) deleted successfully`,
+      data: result,
+    });
+  },
+);
+
+const handleWebhook = async (req: Request, res: Response) => {
+  const status = req.query.status as string;
   try {
-    const event = DonationServices.updateStatusToDB(status, res);
-    console.log(event);
+    await DonationServices.updateStatusToDB(status, res);
   } catch (error) {
-    console.log(error);
+    console.error('Donation redirect error:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: 'Failed to process redirect',
+    });
   }
-}
+};
 
 const getFundStats = catchAsync(async (req: Request, res: Response) => {
   const result = await DonationServices.getFundStatsFromDB();
@@ -51,7 +86,9 @@ const getFundStats = catchAsync(async (req: Request, res: Response) => {
 export const DonationController = {
   createDonation,
   getAllDonations,
+  getSingleDonation,
+  deleteDonation,
+  deleteMultipleDonations,
   handleWebhook,
-  getFundStats
-
+  getFundStats,
 };

@@ -27,7 +27,7 @@ const donationSchema = new Schema<IDonation, DonationModel>(
       type: String,
       enum: ['donation', 'grant'],
       default: 'donation',
-      required: true
+      required: true,
     },
     applicant: {
       type: Schema.Types.ObjectId,
@@ -36,7 +36,15 @@ const donationSchema = new Schema<IDonation, DonationModel>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-export const Donation = model<IDonation, DonationModel>('Donation', donationSchema);
+donationSchema.index({ createdAt: -1 });
+donationSchema.index({ type: 1 });
+donationSchema.index({ email: 1 });
+donationSchema.index({ transactionId: 1 });
+
+export const Donation = model<IDonation, DonationModel>(
+  'Donation',
+  donationSchema,
+);

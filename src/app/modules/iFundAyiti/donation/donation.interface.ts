@@ -5,8 +5,10 @@ export type IDonation = {
   email: string;
   amount: number;
   transactionId?: string;
-  type: string;
+  type: 'donation' | 'grant' | string;
   applicant?: Types.ObjectId;
+  createdAt?: Date;
+  updatedAt?: Date;
 };
 
 export type DonationModel = Model<IDonation>;
