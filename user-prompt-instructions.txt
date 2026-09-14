@@ -1,0 +1,526 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: USER MANAGEMENT MODULE
+(FOR IFUNDAYITI ADMIN DASHBOARD)
+================================================================================
+
+Target Application:
+  - Admin Dashboard: `/users` (or `/admin/users`)
+Base API URLs:
+  - User Endpoints: `/user` (e.g. `http://localhost:5000/api/v1/user`)
+Auth Requirement:
+  - Bearer JWT Token in Authorization header (Admin or Super Admin role)
+
+================================================================================
+EXECUTIVE SUMMARY: WHAT THE BACKEND PROVIDES
+================================================================================
+1. **Live User Analytics & KPI Metrics (`GET /user/stats`)**:
+   - Returns real-time aggregate counts:
+     • `totalUsers` — Total platform accounts (excluding SUPER_ADMIN)
+     • `activeUsers` — Active accounts
+     • `blockedUsers` — Blocked / deactivated accounts
+     • `pendingUsers` — Pending review / approval
+     • `verifiedUsers` & `unverifiedUsers` — Email verification status breakdown
+     • `regularUsers` (`USER`) — Standard platform members / donors
+     • `vendors` (`VENDOR`) — Service providers / campaign creators
+     • `admins` (`ADMIN`) — Dashboard staff / admins
+     • `newThisMonth` — User registrations in the current month
+
+2. **Advanced Paginated Listing & Search (`GET /user`)**:
+   - Search: Across `name`, `email`, and `company` (`?searchTerm=john`)
+   - Role Filter: `?role=USER`, `?role=VENDOR`, `?role=ADMIN`, or `?role=all`
+   - Status Filter: `?status=active`, `?status=blocked`, `?status=pending`, `?status=rejected`
+   - Verified Filter: `?verified=true` or `?verified=false`
+   - Subscription Filter: `?hasSubscription=true` or `?hasSubscription=false`
+   - Pagination: `?page=1&limit=10`
+   - Sorting: `?sort=-createdAt` or `?sort=name`
+   - Automatically populates user `subscription` details and sanitizes sensitive fields.
+
+3. **Single User Inspector / Profile Modal (`GET /user/:id`)**:
+   - Returns complete user record including role, verified status, company, interest, vendor profile, subscription, timestamps, and avatar.
+
+4. **Instant Status Toggling & Block/Unblock (`PATCH /user/change-status/:id`)**:
+   - Toggles status between `active` and `blocked` if no body is passed.
+   - Or explicitly sets `{ status: "blocked" | "active" | "pending" | "rejected", rejectionReason?: string }`.
+
+5. **Admin User Update & Role Assignment (`PATCH /user/:id`)**:
+   - Updates `role`, `status`, `name`, `email`, `verified`, `company`, `interest`, or `rejectionReason`.
+
+6. **Single & Batch Deletion (`DELETE /user/:id` & `DELETE /user/delete-multiple`)**:
+   - Cleanly deletes records and safely unlinks local avatar files.
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium User & Vendor Management in iFundAyiti Admin Dashboard
+
+Implement a world-class, enterprise-grade **User Management** page (`/users` or `/admin/users`) in the Admin Dashboard with:
+1. **Top Stat KPI Metric Cards** (Live counts for Total Users, Active, Blocked, Vendors, Regular Users, New this month).
+2. **Tabbed Views & Dynamic Filters** (Tabs for "All Accounts", "Regular Users", "Vendors", "Admins", plus status & verification dropdowns, date picker, search bar).
+3. **Interactive Data Table with Rich Cells** (User avatar with fallback, role badge pills, status toggle switches, subscription badges, action menus).
+4. **Slide-Out User Detail Drawer / Modal** (Full user profile breakdown, contact details, account audit timestamps, subscription tier, and vendor bio/expertise if applicable).
+5. **Role Promotion & Edit Modal** (Quickly change role, status, verification flag, company).
+6. **Bulk Actions** (Multi-row selection with floating action bar for bulk delete or export).
+
+---
+
+#### 1. TOP STAT KPI METRIC CARDS (`GET /user/stats`)
+- Position a 4-card grid across the top of the page:
+  - **Card 1: Total Platform Members**
+    - Metric: `stats.totalUsers`
+    - Subtitle: `+${stats.newThisMonth} new this month`
+    - Icon: `TeamOutlined` in primary blue/indigo pill (`bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400`).
+  - **Card 2: Active Accounts**
+    - Metric: `stats.activeUsers`
+    - Subtitle: `${Math.round((stats.activeUsers / stats.totalUsers) * 100) || 0}% active rate`
+    - Icon: `CheckCircleOutlined` in emerald pill (`bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400`).
+  - **Card 3: Vendors & Partners**
+    - Metric: `stats.vendors`
+    - Subtitle: `Service providers & partners`
+    - Icon: `ShopOutlined` in amber pill (`bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400`).
+  - **Card 4: Blocked / Flagged**
+    - Metric: `stats.blockedUsers`
+    - Subtitle: `${stats.pendingUsers} pending review`
+    - Icon: `StopOutlined` in rose/red pill (`bg-rose-50 text-rose-600 dark:bg-rose-950/40 dark:text-rose-400`).
+
+---
+
+#### 2. FILTERING & SEARCH TOOLBAR
+- **Role Segmented Tabs**:
+  - `All Accounts` (no role param)
+  - `Users` (`role=USER`)
+  - `Vendors` (`role=VENDOR`)
+  - `Admins` (`role=ADMIN`)
+- **Search Bar**:
+  - Debounced search input (350ms) matching `name`, `email`, or `company`.
+  - Prefix with `SearchOutlined` and clear button.
+- **Filter Dropdowns**:
+  - **Status**: `All Statuses` | `Active` (`status=active`) | `Blocked` (`status=blocked`) | `Pending` (`status=pending`) | `Rejected` (`status=rejected`).
+  - **Email Verified**: `All` | `Verified Only` (`verified=true`) | `Unverified` (`verified=false`).
+  - **Subscription**: `All` | `Subscribed` (`hasSubscription=true`) | `Free / None` (`hasSubscription=false`).
+- **Reset Filters Button**: Resets all filters to default state.
+- **Export CSV Button**: Exports filtered table rows to CSV with columns (ID, Name, Email, Role, Status, Verified, Subscription, Created Date).
+
+---
+
+#### 3. ENTERPRISE DATA TABLE (`GET /user`)
+Render columns with high visual polish and micro-interactions:
+- **Checkbox Column**: For multi-selection and bulk actions.
+- **User Profile**:
+  - Avatar image (fallback to colored initial circle if image is missing).
+  - Name (bold, clickable to open detail drawer).
+  - Email (muted text below name with quick copy-to-clipboard button on hover).
+- **Role Badge**:
+  - `ADMIN` / `SUPER_ADMIN`: Purple badge (`bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 font-semibold`).
+  - `VENDOR`: Amber badge (`bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300`).
+  - `USER`: Sky-blue badge (`bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300`).
+- **Status Toggle**:
+  - Smooth Ant Design / Tailwind `Switch`:
+    - Checked (green): `active`
+    - Unchecked (red): `blocked`
+  - Clicking prompts quick confirmation popover: *"Block this user?"* or *"Unblock this user?"*.
+  - Calls `PATCH /user/change-status/:id` and updates cache optimistically.
+- **Verification Pill**:
+  - Verified: `CheckCircleFilled` in green.
+  - Unverified: `ClockCircleOutlined` in orange (`Unverified`).
+- **Membership / Subscription**:
+  - If `user.subscription`: Crown icon badge with plan name or `Subscribed`.
+  - If null: Muted `Free Tier`.
+- **Joined Date**:
+  - Formatted date (e.g. `MMM DD, YYYY`).
+- **Actions Menu (`...` dropdown)**:
+  - `View Details` (Eye icon) -> Opens user detail drawer.
+  - `Edit User & Role` (Edit icon) -> Opens edit modal.
+  - `Toggle Status` (Stop / Check icon) -> Block or unblock.
+  - `Delete User` (Trash icon in red) -> Confirms and calls `DELETE /user/:id`.
+
+---
+
+#### 4. FLOATING BULK ACTION BAR
+- When 1 or more rows are checked:
+  - Display a floating glassmorphic bar at the bottom center:
+    - Text: `"{N} users selected"`
+    - Buttons:
+      - `Delete Selected`: Calls `DELETE /user/delete-multiple` with `{ ids: string[] }`.
+      - `Export Selected to CSV`.
+      - `Deselect All`.
+
+---
+
+#### 5. USER DETAIL SLIDE-OUT DRAWER (`GET /user/:id`)
+Clicking any user opens a comprehensive right-side drawer (width ~520px):
+- **Header**: Large Avatar with verification checkmark, Name, Email, and status badge.
+- **Key Stats Grid**:
+  - Member Since: Formatted date & relative time (e.g. `4 months ago`).
+  - Current Role: Dropdown to quickly promote/demote.
+  - Account Status: Active / Blocked pill.
+  - Auth Provider: `credentials` or `google`.
+- **Account Details Card**:
+  - User ID (with copy button).
+  - Email verification status.
+  - Company / Organization name (if present).
+  - Interests / Preferences (if present).
+- **Vendor Profile Section (Conditional: If `role === 'VENDOR'` or `vendorProfile` exists)**:
+  - Job Title, Company, Bio.
+  - Hourly Rate, Availability, Consultation Types.
+  - Expertise Tags (rendered as pills).
+  - LinkedIn / Portfolio links.
+  - Application Status (`approved`, `pending`, `rejected`).
+- **Subscription Card (If `user.subscription` exists)**:
+  - Subscription details, status, renewal date.
+- **Drawer Actions Footer**:
+  - `Close` button.
+  - `Block User` / `Unblock User` button.
+  - `Delete User` button with danger confirmation.
+
+---
+
+#### 6. EDIT USER & ROLE MODAL (`PATCH /user/:id`)
+- Form fields:
+  - `Name`: String input
+  - `Role`: Select dropdown (`USER`, `VENDOR`, `ADMIN`)
+  - `Status`: Select dropdown (`active`, `blocked`, `pending`, `rejected`)
+  - `Verified`: Switch (Mark as Verified)
+  - `Company`: String input
+  - `Interest`: String input
+- Submitting sends payload to `PATCH /user/:id`.
+```
+
+===============================================================================
+PART 2: COMPLETE BACKEND API SPECIFICATION
+===============================================================================
+
+### 1. GET /user/stats (Admin Only)
+- **Method**: `GET`
+- **URL**: `/api/v1/user/stats`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "User statistics retrieved successfully",
+  "data": {
+    "totalUsers": 1420,
+    "activeUsers": 1385,
+    "blockedUsers": 25,
+    "pendingUsers": 10,
+    "verifiedUsers": 1350,
+    "unverifiedUsers": 70,
+    "regularUsers": 1280,
+    "vendors": 130,
+    "admins": 10,
+    "newThisMonth": 64
+  }
+}
+```
+
+---
+
+### 2. GET /user (Admin Only)
+- **Method**: `GET`
+- **URL**: `/api/v1/user`
+- **Query Parameters**:
+  - `searchTerm` (string): Searches `name`, `email`, `company`
+  - `role` (string): `USER` | `VENDOR` | `ADMIN` | `all`
+  - `status` (string): `active` | `blocked` | `pending` | `rejected` | `all`
+  - `verified` (boolean): `true` | `false`
+  - `hasSubscription` (boolean): `true` | `false`
+  - `page` (number): Default `1`
+  - `limit` (number): Default `10`
+  - `sort` (string): e.g. `-createdAt` or `name`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "All users retrieved successfully",
+  "data": [
+    {
+      "_id": "66df873491fa30a08e123456",
+      "name": "Jean-Pierre Duval",
+      "email": "jean.duval@example.com",
+      "role": "USER",
+      "image": "https://i.ibb.co/z5YHLV9/profile.png",
+      "status": "active",
+      "verified": true,
+      "company": "Duval Agro Industries",
+      "interest": "Agriculture & Grants",
+      "subscription": {
+        "_id": "66df873491fa30a08e654321",
+        "name": "Premium Member",
+        "status": "active"
+      },
+      "createdAt": "2026-08-15T10:30:00.000Z",
+      "updatedAt": "2026-09-01T14:20:00.000Z"
+    }
+  ],
+  "pagination": {
+    "total": 1420,
+    "limit": 10,
+    "page": 1,
+    "totalPage": 142
+  }
+}
+```
+
+---
+
+### 3. GET /user/:id
+- **Method**: `GET`
+- **URL**: `/api/v1/user/:id`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "User retrieved successfully",
+  "data": {
+    "_id": "66df873491fa30a08e123456",
+    "name": "Jean-Pierre Duval",
+    "email": "jean.duval@example.com",
+    "role": "USER",
+    "image": "https://i.ibb.co/z5YHLV9/profile.png",
+    "status": "active",
+    "verified": true,
+    "authType": "credentials",
+    "company": "Duval Agro Industries",
+    "interest": "Agriculture & Grants",
+    "subscription": {
+      "_id": "66df873491fa30a08e654321",
+      "name": "Premium Member"
+    },
+    "createdAt": "2026-08-15T10:30:00.000Z",
+    "updatedAt": "2026-09-01T14:20:00.000Z"
+  }
+}
+```
+
+---
+
+### 4. PATCH /user/change-status/:id (Admin Only)
+- **Method**: `PATCH`
+- **URL**: `/api/v1/user/change-status/:id`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body (Optional)**:
+```json
+{
+  "status": "blocked",
+  "rejectionReason": "Violated terms of service"
+}
+```
+*(Note: If no body is passed, the status toggles automatically between `active` and `blocked`)*
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "User status changed to blocked",
+  "data": {
+    "_id": "66df873491fa30a08e123456",
+    "name": "Jean-Pierre Duval",
+    "status": "blocked"
+  }
+}
+```
+
+---
+
+### 5. PATCH /user/:id (Admin Only)
+- **Method**: `PATCH`
+- **URL**: `/api/v1/user/:id`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+```json
+{
+  "role": "VENDOR",
+  "status": "active",
+  "verified": true,
+  "company": "Duval & Partners LLC"
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "User updated successfully",
+  "data": {
+    "_id": "66df873491fa30a08e123456",
+    "name": "Jean-Pierre Duval",
+    "role": "VENDOR",
+    "status": "active",
+    "verified": true,
+    "company": "Duval & Partners LLC"
+  }
+}
+```
+
+---
+
+### 6. DELETE /user/:id (Admin Only)
+- **Method**: `DELETE`
+- **URL**: `/api/v1/user/:id`
+- **Headers**: `Authorization: Bearer <token>`
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "User deleted successfully",
+  "data": {
+    "acknowledged": true,
+    "deletedCount": 1
+  }
+}
+```
+
+---
+
+### 7. DELETE /user/delete-multiple (Admin Only)
+- **Method**: `DELETE`
+- **URL**: `/api/v1/user/delete-multiple`
+- **Headers**: `Authorization: Bearer <token>`
+- **Body**:
+```json
+{
+  "ids": [
+    "66df873491fa30a08e123456",
+    "66df873491fa30a08e123457"
+  ]
+}
+```
+- **Response `200 OK`**:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "2 user(s) deleted successfully",
+  "data": {
+    "deletedCount": 2
+  }
+}
+```
+
+================================================================================
+PART 3: REDUX TOOLKIT QUERY (RTK QUERY) INTEGRATION SNIPPET
+================================================================================
+File: `src/redux/features/user/userApi.ts`
+
+```typescript
+import { baseApi } from '../../api/baseApi';
+
+export interface IUserStats {
+  totalUsers: number;
+  activeUsers: number;
+  blockedUsers: number;
+  pendingUsers: number;
+  verifiedUsers: number;
+  unverifiedUsers: number;
+  regularUsers: number;
+  vendors: number;
+  admins: number;
+  newThisMonth: number;
+}
+
+export interface IUser {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'USER' | 'VENDOR';
+  image?: string;
+  status: 'active' | 'blocked' | 'pending' | 'rejected';
+  rejectionReason?: string;
+  verified: boolean;
+  company?: string;
+  interest?: string;
+  subscription?: any;
+  vendorProfile?: any;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const userApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getUserStats: builder.query<{ success: boolean; data: IUserStats }, void>({
+      query: () => ({
+        url: '/user/stats',
+        method: 'GET',
+      }),
+      providesTags: ['Users'],
+    }),
+
+    getAllUsers: builder.query<{ success: boolean; data: IUser[]; pagination: any }, Record<string, any>>({
+      query: (params) => ({
+        url: '/user',
+        method: 'GET',
+        params,
+      }),
+      providesTags: ['Users'],
+    }),
+
+    getSingleUser: builder.query<{ success: boolean; data: IUser }, string>({
+      query: (id) => ({
+        url: `/user/${id}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, id) => [{ type: 'Users', id }],
+    }),
+
+    changeUserStatus: builder.mutation<
+      { success: boolean; data: IUser },
+      { id: string; status?: string; rejectionReason?: string }
+    >({
+      query: ({ id, ...body }) => ({
+        url: `/user/change-status/${id}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['Users'],
+    }),
+
+    updateUserByAdmin: builder.mutation<
+      { success: boolean; data: IUser },
+      { id: string; data: Partial<IUser> }
+    >({
+      query: ({ id, data }) => ({
+        url: `/user/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['Users'],
+    }),
+
+    deleteUser: builder.mutation<{ success: boolean; data: any }, string>({
+      query: (id) => ({
+        url: `/user/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Users'],
+    }),
+
+    deleteMultipleUsers: builder.mutation<{ success: boolean; data: { deletedCount: number } }, string[]>({
+      query: (ids) => ({
+        url: '/user/delete-multiple',
+        method: 'DELETE',
+        body: { ids },
+      }),
+      invalidatesTags: ['Users'],
+    }),
+  }),
+});
+
+export const {
+  useGetUserStatsQuery,
+  useGetAllUsersQuery,
+  useGetSingleUserQuery,
+  useChangeUserStatusMutation,
+  useUpdateUserByAdminMutation,
+  useDeleteUserMutation,
+  useDeleteMultipleUsersMutation,
+} = userApi;
+```
+================================================================================
+END OF SPECIFICATION
+================================================================================

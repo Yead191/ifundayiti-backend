@@ -1,0 +1,312 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: REAL-TIME NOTIFICATION SYSTEM
+(FOR ADMIN DASHBOARD & USER PORTAL)
+================================================================================
+
+Target Applications:
+  1. Admin Dashboard (Topbar Bell Icon, Notification Popover, Notification Drawer & Page)
+  2. Public User Website / Account Portal (Header Bell Icon & User Notifications)
+Base API URLs:
+  - Notifications: `/notification` (e.g. `http://localhost:5000/api/v1/notification`)
+WebSocket / Socket.io Server:
+  - Endpoint: `http://localhost:5000` (or production base URL)
+  - Real-Time Channel Event: `getNotification::<userId>`
+
+================================================================================
+EXECUTIVE SUMMARY: HOW NOTIFICATIONS WORK
+================================================================================
+1. **Real-Time Push via Socket.io**:
+   - Whenever an important platform event occurs (New Donation Received, Membership Activated, Grant Application Submitted, Order Created, Digital Product Purchased), the backend persists the notification to MongoDB AND immediately emits a socket event:
+     `io.emit("getNotification::" + receiverUserId, notificationDoc)`
+   - The frontend socket client listens on `getNotification::<currentUserId>`, shows an instant animated toast, and increments the unread badge count in real time without refreshing!
+2. **REST API State Management**:
+   - `GET /notification` — Fetches paginated notifications for the logged-in user + returns live `unreadCount`.
+   - `PATCH /notification` — Marks ALL notifications as read (`seen: true`) in one click.
+   - `PATCH /notification/:id` — Marks an individual notification as read.
+   - `DELETE /notification/:id` — Deletes a single notification record.
+   - `DELETE /notification/clear-all` — Clears all notification history for the current user.
+   - `GET /notification/:id` — Fetches a single notification with populated sender details.
+3. **Smart In-App Deep Linking**:
+   - Every notification object has a `path` property (e.g. `"/donations"`, `"/orders"`, `"/transactions"`, `"/applications"`).
+   - Clicking a notification automatically navigates the admin or user directly to the relevant resource!
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium Real-Time Notification Bell & Drawer in Admin Dashboard
+
+Implement a high-end, real-time Notification System in the Admin Dashboard with:
+1. **Topbar Bell Icon with Unread Badge & Sound/Toast**
+2. **Interactive Dropdown Popover**
+3. **Dedicated Slide-Out Drawer or Notifications Page (`/admin/notifications`)**
+
+---
+
+#### 1. TOPBAR NOTIFICATION BELL WIDGET
+- Place an elegant bell icon in the dashboard `Topbar.tsx` (next to Search and User Profile):
+  - Ant Design `BellOutlined` icon inside a soft rounded button (`h-9 w-9 rounded-xl bg-slate-50/60 border border-slate-200/60 hover:bg-slate-100`).
+  - **Live Unread Badge Pill**:
+    - Displays `unreadCount` fetched from `GET /notification`.
+    - If `unreadCount > 0`, show an emerald or red notification badge (e.g. `3` or `9+`) with subtle pulsing ping animation (`animate-pulse`).
+    - If `unreadCount === 0`, hide badge.
+
+---
+
+#### 2. SOCKET.IO REAL-TIME LISTENER (LIVE PUSH TOAST)
+- Connect to the backend socket server (`http://localhost:5000` or `VITE_SOCKET_URL`):
+  - Listen on event: `getNotification::${user._id}`.
+  - When a new notification arrives:
+    1. Increment local `unreadCount` by 1.
+    2. Prepend the new notification object to the notification list cache.
+    3. Trigger a modern floating Toast notification (using `sonner` or Ant Design `notification.open`):
+       - Title: `notification.title` (e.g. *"New Donation Received"*).
+       - Description: `notification.message` (e.g. *"Sarah Connor donated $100"*).
+       - Click action: routes to `notification.path`.
+       - Optional subtle sound chime.
+
+---
+
+#### 3. NOTIFICATION DROPDOWN POPOVER
+- Clicking the Bell opens a rich, glassmorphic dropdown popover (width: ~380px - 420px):
+  - **Popover Header**:
+    - Title: `"Notifications"` with unread count badge pill (e.g. `3 Unread`).
+    - Actions:
+      - `"Mark all as read"` button calling `PATCH /notification`. Instantly clears unread badges.
+      - `"Clear all"` trash button calling `DELETE /notification/clear-all` with confirmation.
+  - **Filter Segment**:
+    - Tabs: `All` vs `Unread`.
+  - **Notification Item Card**:
+    - Left Icon: Dynamic icon based on `title` or `path`:
+      - Donation (`/donations`): `HeartFilled` in emerald circle.
+      - Order (`/orders`): `ShoppingFilled` in sky-blue circle.
+      - Membership (`/subscriptions`): `CrownFilled` in amber circle.
+      - System: `BellFilled` in teal circle.
+    - Title & Message: Bold title + preview text (line-clamp-2).
+    - Unread Indicator: Subtle green dot (`h-2 w-2 rounded-full bg-emerald-500`) on unread items.
+    - Timestamp: Relative time formatted (e.g. `"2m ago"`, `"1h ago"`, `"Yesterday"`).
+    - Hover Actions: Quick checkmark to mark as read (`PATCH /notification/:id`) and trash icon to delete (`DELETE /notification/:id`).
+    - Click Handler:
+      - Calls `PATCH /notification/:id` to mark as read.
+      - Navigates to `notification.path`.
+      - Closes the popover.
+  - **Popover Footer**:
+    - Link to `"View All Notifications"` (opens full drawer or `/notifications` route).
+  - **Empty State**:
+    - When no notifications exist: Clean Bell illustration + `"All caught up! No notifications yet."`
+
+---
+
+#### 4. FULL NOTIFICATIONS DRAWER / PAGE (`/notifications`)
+- Full-page or slide-out drawer with:
+  - Search bar filtering notifications by title/message (`searchTerm`).
+  - Filter by `seen: true` / `seen: false`.
+  - Pagination controls.
+  - Batch select & delete multiple notifications.
+```
+
+================================================================================
+PART 2: COPY-PASTE PROMPT FOR PUBLIC WEBSITE & USER PORTAL
+================================================================================
+```markdown
+### TASK: Build User Notification Bell in Public Website Account Portal
+
+Implement the user-facing notification widget for authenticated users in the website header / account navigation:
+1. **Header Bell**:
+   - Fetch unread notifications via `GET /notification`.
+   - Connect to socket channel `getNotification::${user._id}` to receive real-time order status updates, donation receipts, and grant announcements.
+2. **Notification Popover**:
+   - Clean list of notifications for the user.
+   - Click to mark read (`PATCH /notification/:id`) and open order receipt or application status.
+   - "Mark all as read" button (`PATCH /notification`).
+```
+
+================================================================================
+PART 3: BACKEND API CHEAT SHEET & SOCKET CONTRACTS
+================================================================================
+
+BASE REST URL:
+  - `http://localhost:5000/api/v1/notification` (or `/notifications`)
+SOCKET.IO EVENT:
+  - `getNotification::<userId>`
+
+--------------------------------------------------------------------------------
+1. GET ALL NOTIFICATIONS (PAGINATED + UNREAD COUNT)
+--------------------------------------------------------------------------------
+- Method: GET /notification
+- Access: Authenticated User (Admin, SuperAdmin, User, Vendor)
+- Headers: `Authorization: Bearer <token>`
+- Query Parameters:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (searches `title`, `message`)
+  - `seen`: boolean (filter unread `false` or read `true`)
+  - `sort`: string (default: "-createdAt")
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Notifications retrieved successfully!",
+    "pagination": { "page": 1, "limit": 10, "total": 12, "totalPage": 2 },
+    "data": {
+      "unreadCount": 3,
+      "data": [
+        {
+          "_id": "67cc4a1b3c4d5e6f7a8b9c01",
+          "receiver": "67cb1a2b3c4d5e6f7a8b9c01",
+          "sender": {
+            "_id": "67cb2b...",
+            "name": "Sarah Connor",
+            "email": "sarah@example.com",
+            "image": "/image/avatar-2.jpg"
+          },
+          "title": "New Donation Received",
+          "message": "Sarah Connor donated $100.00 to IFundAyiti",
+          "refId": "67cc3a...",
+          "path": "/donations",
+          "seen": false,
+          "createdAt": "2026-09-14T11:45:00.000Z",
+          "updatedAt": "2026-09-14T11:45:00.000Z"
+        }
+      ]
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+2. MARK ALL NOTIFICATIONS AS READ
+--------------------------------------------------------------------------------
+- Method: PATCH /notification
+- Access: Authenticated User
+- Headers: `Authorization: Bearer <token>`
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "All notifications marked as read successfully!",
+    "data": {
+      "acknowledged": true,
+      "modifiedCount": 3
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+3. MARK SINGLE NOTIFICATION AS READ
+--------------------------------------------------------------------------------
+- Method: PATCH /notification/:id
+- Access: Authenticated User
+- Headers: `Authorization: Bearer <token>`
+- Response (200 OK): Returns updated notification with `seen: true`.
+
+--------------------------------------------------------------------------------
+4. CLEAR ALL NOTIFICATIONS (DELETE ALL)
+--------------------------------------------------------------------------------
+- Method: DELETE /notification/clear-all
+- Access: Authenticated User
+- Headers: `Authorization: Bearer <token>`
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "All notifications cleared successfully!",
+    "data": {
+      "acknowledged": true,
+      "deletedCount": 12
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+5. DELETE SINGLE NOTIFICATION
+--------------------------------------------------------------------------------
+- Method: DELETE /notification/:id
+- Access: Authenticated User
+- Headers: `Authorization: Bearer <token>`
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Notification deleted successfully!",
+    "data": {
+      "acknowledged": true,
+      "deletedCount": 1
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+6. SOCKET.IO REAL-TIME EVENT EXAMPLE (FRONTEND SETUP)
+--------------------------------------------------------------------------------
+```typescript
+import { io, Socket } from "socket.io-client";
+import { toast } from "sonner";
+
+// Initialize socket
+const socket: Socket = io("http://localhost:5000", {
+  transports: ["websocket", "polling"],
+});
+
+// In React useEffect with current user ID:
+useEffect(() => {
+  if (!user?._id) return;
+
+  const eventName = `getNotification::${user._id}`;
+
+  socket.on(eventName, (newNotification: INotification) => {
+    // 1. Play subtle audio chime (optional)
+    // 2. Trigger notification toast
+    toast(newNotification.title, {
+      description: newNotification.message,
+      action: {
+        label: "View",
+        onClick: () => navigate(newNotification.path),
+      },
+    });
+
+    // 3. Invalidate RTK Query cache to fetch updated unreadCount & list
+    dispatch(notificationApi.util.invalidateTags(["Notifications"]));
+  });
+
+  return () => {
+    socket.off(eventName);
+  };
+}, [user?._id]);
+```
+
+================================================================================
+PART 4: TYPESCRIPT DATA MODELS
+================================================================================
+
+```typescript
+export interface INotificationSender {
+  _id: string;
+  name: string;
+  email: string;
+  image?: string;
+}
+
+export interface INotification {
+  _id: string;
+  receiver: string;
+  sender?: INotificationSender | null;
+  title: string;
+  message?: string;
+  refId: string;
+  path: string;
+  seen: boolean;
+  type?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface INotificationResponse {
+  unreadCount: number;
+  data: INotification[];
+}
+```
+================================================================================

@@ -6,6 +6,13 @@ import { NotificationServices } from '../app/modules/notification/notification.s
 import { emailHelper } from '../helpers/emailHelper';
 import { emailTemplate } from '../shared/emailTemplate';
 import config from '../config';
+import { Transaction } from '../app/modules/transaction/transaction.model';
+import { User } from '../app/modules/user/user.model';
+import {
+  TRANSACTION_CATEGORY,
+  TRANSACTION_STATUS,
+  TRANSACTION_TYPE,
+} from '../enums/transaction';
 
 export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
   const mongoSession = await mongoose.startSession();
@@ -15,14 +22,22 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
     const metadata = data?.metadata;
     const isDonation =
       metadata?.paymentType === 'ifundayiti_donation' ||
-      metadata?.paymentType === 'donation';
+      metadata?.paymentType === 'donation' ||
+      (metadata?.project === 'ifundayiti' && (metadata?.amount || data?.amount_total));
 
     if (isDonation) {
-      const name = metadata.name;
-      const email = metadata.email;
-      const amount = Number(metadata.amount);
+      const name =
+        metadata?.name || data?.customer_details?.name || 'Anonymous Donor';
+      const email =
+        metadata?.email ||
+        data?.customer_email ||
+        data?.customer_details?.email ||
+        '';
+      const amount =
+        Number(metadata?.amount) ||
+        (data?.amount_total ? data.amount_total / 100 : 0);
 
-      if (name && email && !isNaN(amount)) {
+      if (amount > 0) {
         const donations = await Donation.create(
           [
             {
@@ -35,7 +50,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
           ],
           { session: mongoSession },
         );
-        // const donationDoc = donations[0];
+
         await ProgramFund.updateOne(
           {},
           {
@@ -43,6 +58,36 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
           },
           { session: mongoSession },
         );
+
+        // Find associated user if email matches
+        const user = email
+          ? await User.findOne({ email }).session(mongoSession)
+          : null;
+
+        const paymentTxnId =
+          (typeof data.payment_intent === 'string'
+            ? data.payment_intent
+            : data.payment_intent?.id) || data.id;
+
+        // Create transaction record for platform financial tracking
+        await Transaction.create(
+          [
+            {
+              user: user?._id,
+              total_price: amount,
+              amount: amount,
+              payment_received: amount,
+              type: TRANSACTION_TYPE.CREDIT,
+              category: TRANSACTION_CATEGORY.DONATION,
+              status: TRANSACTION_STATUS.SUCCESS,
+              payment_method: 'stripe',
+              payment_intent_id: paymentTxnId,
+              transaction_id: paymentTxnId,
+            },
+          ],
+          { session: mongoSession },
+        );
+
         NotificationServices.sendNotificationToAdmins({
           title: 'New Donation Received',
           message: `${name} donated $${amount}`,
@@ -52,7 +97,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
       }
     }
 
-    console.log(`[Donation] Dontation create and fund add done`);
+    console.log(`[Donation] Donation and transaction creation done`);
 
     await mongoSession.commitTransaction();
     mongoSession.endSession();

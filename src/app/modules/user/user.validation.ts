@@ -26,8 +26,43 @@ const updateProfileVisibilityZodSchema = z.object({
   }),
 });
 
+const deleteMultipleUsersSchema = z.object({
+  body: z.object({
+    ids: z
+      .array(z.string({ required_error: 'User ID must be a string' }), {
+        required_error: 'Array of user IDs is required',
+      })
+      .min(1, 'At least one user ID must be provided'),
+  }),
+});
+
+const updateUserByAdminZodSchema = z.object({
+  body: z.object({
+    name: z.string().optional(),
+    role: z.string().optional(),
+    status: z.enum(['active', 'blocked', 'rejected', 'pending']).optional(),
+    verified: z.boolean().optional(),
+    company: z.string().optional(),
+    interest: z.string().optional(),
+    rejectionReason: z.string().optional(),
+  }),
+});
+
+const changeStatusZodSchema = z.object({
+  body: z
+    .object({
+      status: z.enum(['active', 'blocked', 'rejected', 'pending']).optional(),
+      rejectionReason: z.string().optional(),
+    })
+    .optional(),
+});
+
 export const UserValidation = {
   createUserZodSchema,
   updateUserZodSchema,
   updateProfileVisibilityZodSchema,
+  deleteMultipleUsersSchema,
+  updateUserByAdminZodSchema,
+  changeStatusZodSchema,
 };
+

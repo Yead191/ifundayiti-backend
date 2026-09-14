@@ -128,16 +128,29 @@ export const handleOrderPurchase = async (session: Stripe.Checkout.Session) => {
       typeof session.payment_intent === 'string'
         ? session.payment_intent
         : session.payment_intent?.id;
+
+    const finalTotalPrice = order.price_breakdown?.total_price || amountPaid;
+    const paymentTxnId =
+      order.payment_intent_id ||
+      (typeof session.payment_intent === 'string'
+        ? session.payment_intent
+        : session.payment_intent?.id) ||
+      session.id;
+
     const transaction = await Transaction.create(
       [
         {
           user: order.user,
-          amount: amountPaid,
-          type: TRANSACTION_TYPE.DEBIT,
+          total_price: finalTotalPrice,
+          amount: finalTotalPrice,
+          payment_received: amountPaid || finalTotalPrice,
+          discount_amount: order.price_breakdown?.discount_amount || 0,
+          type: TRANSACTION_TYPE.CREDIT,
           category: TRANSACTION_CATEGORY.SHOP,
           status: TRANSACTION_STATUS.SUCCESS,
           payment_method: 'stripe',
-          payment_intent_id: order.payment_intent_id,
+          payment_intent_id: paymentTxnId,
+          transaction_id: paymentTxnId,
           order: order._id,
         },
       ],

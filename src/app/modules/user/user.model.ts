@@ -83,6 +83,10 @@ const userSchema = new Schema<IUser, UserModal>(
   { timestamps: true },
 );
 
+// Performance indexes
+userSchema.index({ role: 1, status: 1 });
+userSchema.index({ createdAt: -1 });
+
 //exist user check
 userSchema.statics.isExistUserById = async (id: string) => {
   const isExist = await User.findById(id);

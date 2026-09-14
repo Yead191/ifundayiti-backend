@@ -27,7 +27,7 @@ const getTransactions = async (
       {
         path: 'order',
         select:
-          'orderNumber totalAmount status deliveryStatus paymentStatus createdAt',
+          'order_id price_breakdown status payment_status contact_number formatted_address items createdAt',
       },
     ]),
     query,
@@ -36,13 +36,11 @@ const getTransactions = async (
       'transaction_id',
       'payment_intent_id',
       'payment_method',
-      'total_price',
     ])
     .filter()
     .sort()
     .paginate()
-    .sort()
-    .filter();
+    .fields();
   const [transactions, pagination] = await Promise.all([
     transactionQuery.modelQuery.lean(),
     transactionQuery.getPaginationInfo(),
@@ -62,7 +60,7 @@ const getSingleTransactionFromDB = async (id: string, user: JwtPayload) => {
       {
         path: 'order',
         select:
-          'orderNumber totalAmount status deliveryStatus paymentStatus createdAt items',
+          'order_id price_breakdown status payment_status contact_number formatted_address items createdAt',
       },
     ])
     .lean();
@@ -97,7 +95,13 @@ const getTransactionStatsFromDB = async () => {
           $sum: {
             $cond: [
               { $eq: ['$status', TRANSACTION_STATUS.SUCCESS] },
-              { $ifNull: ['$total_price', '$amount'] },
+              {
+                $cond: [
+                  { $gt: ['$total_price', 0] },
+                  '$total_price',
+                  { $ifNull: ['$amount', 0] },
+                ],
+              },
               0,
             ],
           },
@@ -111,7 +115,13 @@ const getTransactionStatsFromDB = async () => {
                   { $eq: ['$category', TRANSACTION_CATEGORY.SHOP] },
                 ],
               },
-              { $ifNull: ['$total_price', '$amount'] },
+              {
+                $cond: [
+                  { $gt: ['$total_price', 0] },
+                  '$total_price',
+                  { $ifNull: ['$amount', 0] },
+                ],
+              },
               0,
             ],
           },
@@ -125,7 +135,33 @@ const getTransactionStatsFromDB = async () => {
                   { $eq: ['$category', TRANSACTION_CATEGORY.MEMBERSHIP] },
                 ],
               },
-              { $ifNull: ['$total_price', '$amount'] },
+              {
+                $cond: [
+                  { $gt: ['$total_price', 0] },
+                  '$total_price',
+                  { $ifNull: ['$amount', 0] },
+                ],
+              },
+              0,
+            ],
+          },
+        },
+        donationRevenue: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$status', TRANSACTION_STATUS.SUCCESS] },
+                  { $eq: ['$category', TRANSACTION_CATEGORY.DONATION] },
+                ],
+              },
+              {
+                $cond: [
+                  { $gt: ['$total_price', 0] },
+                  '$total_price',
+                  { $ifNull: ['$amount', 0] },
+                ],
+              },
               0,
             ],
           },
@@ -163,6 +199,7 @@ const getTransactionStatsFromDB = async () => {
     totalRevenue: stats?.totalRevenue || 0,
     shopRevenue: stats?.shopRevenue || 0,
     membershipRevenue: stats?.membershipRevenue || 0,
+    donationRevenue: stats?.donationRevenue || 0,
     totalTransactions: stats?.totalTransactions || 0,
     successfulTransactions: stats?.successfulTransactions || 0,
     pendingTransactions: stats?.pendingTransactions || 0,

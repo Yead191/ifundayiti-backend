@@ -96,16 +96,44 @@ const getSingleUser = catchAsync(async (req: Request, res: Response) => {
 // change status
 const changeStatusOfUser = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const result = await UserService.changeStatusOfUser(id);
+  const { status, rejectionReason } = req.body || {};
+  const result = await UserService.changeStatusOfUser(
+    id,
+    status,
+    rejectionReason,
+  );
   return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
+    message: `User status changed to ${result?.status}`,
+    data: result,
+  });
+});
+
+// get user stats
+const getUserStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await UserService.getUserStatsFromDB();
+  return sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'User statistics retrieved successfully',
+    data: result,
+  });
+});
+
+// update user by admin
+const updateUserByAdmin = catchAsync(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const result = await UserService.updateUserByAdmin(id, req.body);
+  return sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'User updated successfully',
     data: result,
   });
 });
 
 // delete user
-
 const deleteUser = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await UserService.deleteUserService(id);
@@ -117,13 +145,29 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+// delete multiple users
+const deleteMultipleUsers = catchAsync(async (req: Request, res: Response) => {
+  const { ids } = req.body;
+  const result = await UserService.deleteMultipleUsersService(ids);
+  return sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: `${result.deletedCount} user(s) deleted successfully`,
+    data: result,
+  });
+});
+
 export const UserController = {
   createUser,
   getUserProfile,
   updateProfile,
   uploadFile,
   getAllUsers,
+  getUserStats,
   getSingleUser,
   changeStatusOfUser,
+  updateUserByAdmin,
   deleteUser,
+  deleteMultipleUsers,
 };
+

@@ -127,20 +127,15 @@ const getAllUsersFromDB = async (query: Record<string, any>) => {
 
   delete query.hasSubscription;
   const userQuery = new QueryBuilder(
-    User.find(filter).populate({
+    User.find(filter).select('-password -authentication').populate({
       path: 'subscription',
-      // select: 'name start_date end_date',
-      // populate: {
-      //   path: 'plan',
-      //   select: 'name',
-      // },
     }),
     query,
   )
-    .paginate()
-    .sort()
     .search(['name', 'email'])
     .filter()
+    .sort()
+    .paginate()
     .fields();
 
   const [users, pagination] = await Promise.all([
@@ -151,48 +146,184 @@ const getAllUsersFromDB = async (query: Record<string, any>) => {
   return { users, pagination };
 };
 
+const getUserStatsFromDB = async () => {
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  const [
+    totalUsers,
+    activeUsers,
+    blockedUsers,
+    pendingUsers,
+    verifiedUsers,
+    unverifiedUsers,
+    roleCounts,
+    newThisMonth,
+  ] = await Promise.all([
+    User.countDocuments({ role: { $ne: USER_ROLES.SUPER_ADMIN } }),
+    User.countDocuments({
+      status: 'active',
+      role: { $ne: USER_ROLES.SUPER_ADMIN },
+    }),
+    User.countDocuments({
+      status: 'blocked',
+      role: { $ne: USER_ROLES.SUPER_ADMIN },
+    }),
+    User.countDocuments({
+      status: 'pending',
+      role: { $ne: USER_ROLES.SUPER_ADMIN },
+    }),
+    User.countDocuments({
+      verified: true,
+      role: { $ne: USER_ROLES.SUPER_ADMIN },
+    }),
+    User.countDocuments({
+      verified: false,
+      role: { $ne: USER_ROLES.SUPER_ADMIN },
+    }),
+    User.aggregate([
+      { $match: { role: { $ne: USER_ROLES.SUPER_ADMIN } } },
+      { $group: { _id: '$role', count: { $sum: 1 } } },
+    ]),
+    User.countDocuments({
+      createdAt: { $gte: startOfMonth },
+      role: { $ne: USER_ROLES.SUPER_ADMIN },
+    }),
+  ]);
+
+  const roles: Record<string, number> = {
+    USER: 0,
+    VENDOR: 0,
+    ADMIN: 0,
+  };
+  roleCounts.forEach((r: { _id: string; count: number }) => {
+    if (r._id) {
+      roles[r._id] = r.count;
+    }
+  });
+
+  return {
+    totalUsers,
+    activeUsers,
+    blockedUsers,
+    pendingUsers,
+    verifiedUsers,
+    unverifiedUsers,
+    regularUsers: roles.USER || 0,
+    vendors: roles.VENDOR || 0,
+    admins: roles.ADMIN || 0,
+    newThisMonth,
+  };
+};
+
 const getUserService = async (user: JwtPayload, id: any) => {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
   }
-  console.log(id);
-  let result;
 
-  if (user.role === USER_ROLES.ADMIN) {
-    result = await User.findById(id);
+  const isAdmin = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(
+    user.role,
+  );
+
+  let result;
+  if (isAdmin) {
+    result = await User.findById(id)
+      .select('-password -authentication')
+      .populate('subscription');
   } else {
     result = await User.findById(id).select(
-      'name email role company interest verified status',
+      'name email role company interest verified status image createdAt',
     );
   }
 
   if (!result) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
   }
 
   return result;
 };
 
-// change status of user
-const changeStatusOfUser = async (id: string) => {
+// change status of user (toggle or explicit status)
+const changeStatusOfUser = async (
+  id: string,
+  status?: string,
+  rejectionReason?: string,
+) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
+  }
+
   const isExistUser = await User.findById(id);
 
   if (!isExistUser) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
   }
-  const updateStatus = isExistUser.status === 'active' ? 'blocked' : 'active';
-  const result = await User.updateOne(
-    { _id: id },
-    { $set: { status: updateStatus } },
-  );
-  console.log(result);
+
+  let updateStatus = status;
+  if (!updateStatus) {
+    updateStatus = isExistUser.status === 'active' ? 'blocked' : 'active';
+  }
+
+  const updateData: Record<string, any> = { status: updateStatus };
+  if (rejectionReason !== undefined) {
+    updateData.rejectionReason = rejectionReason;
+  }
+
+  const result = await User.findByIdAndUpdate(
+    id,
+    { $set: updateData },
+    { new: true },
+  ).select('-password -authentication');
+
+  return result;
+};
+
+// update user by admin
+const updateUserByAdmin = async (id: string, payload: Partial<IUser>) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
+  }
+
+  const isExistUser = await User.findById(id);
+  if (!isExistUser) {
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
+  }
+
+  const allowedFields = [
+    'name',
+    'email',
+    'role',
+    'status',
+    'verified',
+    'company',
+    'interest',
+    'rejectionReason',
+  ];
+  const updateData: Record<string, any> = {};
+
+  for (const field of allowedFields) {
+    if ((payload as any)[field] !== undefined) {
+      updateData[field] = (payload as any)[field];
+    }
+  }
+
+  const result = await User.findByIdAndUpdate(
+    id,
+    { $set: updateData },
+    { new: true, runValidators: true },
+  ).select('-password -authentication');
+
   return result;
 };
 
 const deleteUserService = async (id: string) => {
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid user id');
+  }
+
   const isExistUser = await User.findById(id);
   if (!isExistUser) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
+    throw new ApiError(StatusCodes.NOT_FOUND, "User doesn't exist!");
   }
   if (isExistUser.image) {
     unlinkFile(isExistUser.image);
@@ -201,12 +332,41 @@ const deleteUserService = async (id: string) => {
   return result;
 };
 
+const deleteMultipleUsersService = async (ids: string[]) => {
+  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Please provide an array of user IDs to delete',
+    );
+  }
+
+  const validIds = ids.filter(id => mongoose.Types.ObjectId.isValid(id));
+  if (validIds.length === 0) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'No valid user IDs provided');
+  }
+
+  const users = await User.find({ _id: { $in: validIds } });
+  for (const user of users) {
+    if (user.image && !user.image.startsWith('http')) {
+      unlinkFile(user.image);
+    }
+  }
+
+  const result = await User.deleteMany({ _id: { $in: validIds } });
+  return {
+    deletedCount: result.deletedCount,
+  };
+};
+
 export const UserService = {
   createUserToDB,
   getUserProfileFromDB,
   updateProfileToDB,
   getAllUsersFromDB,
+  getUserStatsFromDB,
   getUserService,
   changeStatusOfUser,
+  updateUserByAdmin,
   deleteUserService,
+  deleteMultipleUsersService,
 };

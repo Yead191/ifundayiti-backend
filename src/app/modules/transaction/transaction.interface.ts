@@ -6,7 +6,7 @@ import {
 } from '../../../enums/transaction';
 
 export type ITransaction = {
-  user: Types.ObjectId;
+  user?: Types.ObjectId;
   amount?: number;
   total_price: number;
   payment_received: number;

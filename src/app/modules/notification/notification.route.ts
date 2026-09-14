@@ -19,7 +19,19 @@ router.route('/')
         NotificationController.readAllNotifications
     );
 
+router.delete(
+  '/clear-all',
+  auth(
+    USER_ROLES.SUPER_ADMIN,
+    USER_ROLES.ADMIN,
+    USER_ROLES.USER,
+    USER_ROLES.VENDOR,
+  ),
+  NotificationController.clearAllNotifications,
+);
+
 router.route('/:id')
+
     .get(
         auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.USER, USER_ROLES.VENDOR),
         NotificationController.getSingleNotification

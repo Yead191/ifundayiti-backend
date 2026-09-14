@@ -51,11 +51,11 @@ const getAllNotifications = async (
   )
     .search(['title', 'message'])
     .filter()
-    .fields()
+    .sort()
     .paginate()
-    .sort();
+    .fields();
 
-  let unreadCount = await Notification.countDocuments({
+  const unreadCount = await Notification.countDocuments({
     receiver: user.id,
     seen: false,
   });
@@ -127,6 +127,11 @@ const readAllNotifications = async (user: JwtPayload) => {
   return result;
 };
 
+const clearAllNotifications = async (user: JwtPayload) => {
+  const result = await Notification.deleteMany({ receiver: user.id });
+  return result;
+};
+
 export const NotificationServices = {
   createNotification,
   sendNotificationToAdmins,
@@ -136,4 +141,5 @@ export const NotificationServices = {
   deleteNotification,
   readSingleNotification,
   readAllNotifications,
+  clearAllNotifications,
 };

@@ -11,7 +11,7 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>(
     user: {
       type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: false,
     },
     amount: {
       type: Number,
@@ -84,13 +84,13 @@ const transactionSchema = new Schema<ITransaction, TransactionModel>(
 
 // Pre-save synchronization hook to keep amount, total_price, and payment_received consistent
 transactionSchema.pre('save', function (next) {
-  if (!this.total_price && this.amount) {
+  if ((!this.total_price || this.total_price === 0) && this.amount) {
     this.total_price = this.amount;
   }
-  if (!this.amount && this.total_price) {
+  if ((!this.amount || this.amount === 0) && this.total_price) {
     this.amount = this.total_price;
   }
-  if (!this.payment_received && this.total_price) {
+  if ((!this.payment_received || this.payment_received === 0) && this.total_price) {
     this.payment_received = this.total_price;
   }
   if (!this.transaction_id && this.payment_intent_id) {
