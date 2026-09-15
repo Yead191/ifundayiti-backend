@@ -177,6 +177,12 @@ export const eventBookingUserConfirmation = (
                       ${values.price > 0 ? `$${values.price.toFixed(2)} USD` : 'FREE'}
                     </td>
                   </tr>
+                  <tr>
+                    <td style="font-weight: bold; border-bottom: 1px solid #eef1f8;">Quantity / Passes:</td>
+                    <td style="border-bottom: 1px solid #eef1f8; font-weight: 600; color: #333333;">
+                      ${values.quantity || 1} Ticket(s) (Admit ${values.quantity || 1})
+                    </td>
+                  </tr>
                   ${
                     values.transactionId
                       ? `

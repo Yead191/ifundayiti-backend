@@ -14,6 +14,9 @@ export interface IEventTicketData {
   qrCodeDataUrl?: string;
   ticketUrl?: string;
   quantity?: number;
+  price?: number;
+  unitPrice?: number;
+  pricingType?: 'free' | 'paid';
 }
 
 
@@ -31,7 +34,19 @@ export const generateEventTicketHtml = (data: IEventTicketData): string => {
     ticketCode,
     qrCodeDataUrl,
     quantity = 1,
+    price = 0,
+    unitPrice = 0,
+    pricingType = 'free',
   } = data;
+
+  const qty = Number(quantity) || 1;
+  const isFree = pricingType === 'free' || (price === 0 && unitPrice === 0);
+  const displayPrice = isFree
+    ? 'Free RSVP'
+    : `$${Number(price > 0 ? price : unitPrice * qty).toFixed(2)} USD`;
+  const unitPriceNote = !isFree && unitPrice > 0 && qty > 1
+    ? ` ($${Number(unitPrice).toFixed(2)} ea)`
+    : '';
 
   const fullLocation = venueAddress
     ? `${location}, ${venueAddress}`
@@ -277,6 +292,17 @@ export const generateEventTicketHtml = (data: IEventTicketData): string => {
       font-weight: 700;
       border: 1px solid rgba(212, 175, 55, 0.4);
     }
+    .price-pill {
+      font-size: 10px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      background: rgba(212, 175, 55, 0.12);
+      color: #F5DE88;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-weight: 700;
+      border: 1px solid rgba(212, 175, 55, 0.35);
+    }
 
     /* Ticket Footer Quote */
     .ticket-footer-quote {
@@ -374,7 +400,19 @@ export const generateEventTicketHtml = (data: IEventTicketData): string => {
       text-transform: uppercase;
       font-weight: 800;
       color: #121214;
-      margin: 12px 0 8px 0;
+      margin: 10px 0 4px 0;
+    }
+    .stub-price {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #2b1f04;
+      margin-bottom: 6px;
+      background: rgba(18, 18, 20, 0.08);
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-block;
     }
 
     /* QR Code & Barcode */
@@ -575,14 +613,47 @@ export const generateEventTicketHtml = (data: IEventTicketData): string => {
             </div>
           </div>
 
+          <!-- Quantity / Passes -->
+          <div class="detail-item">
+            <div class="detail-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div class="detail-content">
+              <div class="label">Quantity</div>
+              <div class="value">${qty} ${qty > 1 ? 'Passes' : 'Pass'} (Admit ${qty})</div>
+            </div>
+          </div>
+
+          <!-- Price -->
+          <div class="detail-item">
+            <div class="detail-icon">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <div class="detail-content">
+              <div class="label">Price</div>
+              <div class="value" style="color: #ECC870; font-weight: 700;">${displayPrice}${unitPriceNote}</div>
+            </div>
+          </div>
+
           <!-- Guest Badge -->
           <div class="customer-badge">
             <div>
               <span class="label" style="display:block;">Ticket Holder</span>
               <span class="customer-name">${customerName}</span>
             </div>
-            <div class="admit-count">
-              Admit ${quantity}
+            <div style="display: flex; gap: 8px; align-items: center;">
+              <span class="price-pill">${displayPrice}</span>
+              <div class="admit-count">
+                Admit ${qty}
+              </div>
             </div>
           </div>
 
@@ -612,7 +683,8 @@ export const generateEventTicketHtml = (data: IEventTicketData): string => {
         <div>
           <div class="stub-event-title">${eventTitle}</div>
           <div class="stub-event-sub">${eventSubtitle}</div>
-          <div class="stub-admit">ADMIT ${quantity}</div>
+          <div class="stub-admit">ADMIT ${qty}</div>
+          <div class="stub-price">${displayPrice}</div>
         </div>
 
         <!-- QR Code Container -->

@@ -447,6 +447,9 @@ const renderTicketHtml = async (idOrCode: string): Promise<string> => {
     ticketUrl,
     qrCodeDataUrl: qrCode,
     quantity: booking.quantity || 1,
+    price: booking.price,
+    unitPrice: event.price || 0,
+    pricingType: event.pricingType || (booking.price > 0 ? 'paid' : 'free'),
   });
 };
 

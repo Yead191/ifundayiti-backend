@@ -7,8 +7,10 @@ Target Applications:
   1. Admin Dashboard (/admin/events, /admin/event-bookings, /admin/event-checkin)
   2. Public User Website (/events, /events/:id, /ticket/:idOrCode)
 Base API URLs:
-  - Event Endpoints:    `/event`       (e.g. `http://localhost:5000/api/v1/event`)
-  - Booking Endpoints:  `/booking`     (e.g. `http://localhost:5000/api/v1/booking`)
+  - Event Endpoints:    `/api/v1/event`       (e.g. `http://10.10.26.173:5004/api/v1/event`)
+  - Booking Endpoints:  `/api/v1/booking`     (e.g. `http://10.10.26.173:5004/api/v1/booking`)
+Official Brand Assets:
+  - Logo URL: `https://res.cloudinary.com/dknmebeee/image/upload/v1789453331/logo-ifundayiti-nav_ea5qml.png`
 
 ================================================================================
 EXECUTIVE SUMMARY: COMPLETE EVENT & TICKET ARCHITECTURE
@@ -20,19 +22,21 @@ EXECUTIVE SUMMARY: COMPLETE EVENT & TICKET ARCHITECTURE
    - `remainingSeats`: Dynamically computed as `Math.max(0, capacity - reservedCount)`
    - Speakers subdocuments (`name`, `role`, `avatar`), `dressCode`, `virtualLink`, `featured`, `status` ('draft' | 'published' | 'cancelled' | 'completed').
 
-2. **Automated Registration Workflow**:
+2. **Automated Registration Workflow (JWT Authenticated)**:
+   - **User Session Authentication**: Users must be authenticated (`Authorization: Bearer <token>`). Attendee Name and Email are securely retrieved by the backend directly from the authenticated user profile—NEVER passed in the request body.
    - **Virtual Events**: Always FREE. Immediately confirmed. Confirmation email dispatches the private virtual meeting link (`virtualLink`). No physical ticket is generated.
    - **Physical & Hybrid Events (FREE)**: Free RSVP. Immediately confirmed. Auto-generates unique Ticket ID (`IFA-YYYY-XXXXXX`) and scannable QR code. Confirmation email sent to attendee and admin (`config.support.admin`).
-   - **Physical & Hybrid Events (PAID)**: Creates pending booking. Redirects user to Stripe Checkout (`POST /booking`). Webhook catches `checkout.session.completed`, confirms booking, generates Ticket ID + QR code, creates `Transaction` (`category: 'Event'`, `type: 'Credit'`), and emails golden ticket to attendee and admin.
+   - **Physical & Hybrid Events (PAID)**: Creates pending booking. Redirects user to Stripe Checkout (`POST /api/v1/booking`). Webhook catches `checkout.session.completed`, confirms booking, generates Ticket ID + QR code, creates `Transaction` (`category: 'Event'`, `type: 'Credit'`), and emails golden ticket to attendee and admin.
 
 3. **Door Staff Live Check-in Scanner**:
-   - `POST /booking/check-in/:ticketCode` (or `POST /booking/check-in` with `{ ticketCode }`).
+   - `POST /api/v1/booking/check-in/:ticketCode` (or `POST /api/v1/booking/check-in` with `{ ticketCode }`).
+   - The QR code on tickets and emails encodes the clean `ticketCode` (e.g. `IFA-2026-B28A2B`), but the endpoint is smart and also accepts full ticket URLs or MongoDB `_id`s.
    - Verifies ticket authenticity, flags unpaid/cancelled bookings, prevents duplicate admissions by returning the exact previous check-in timestamp.
 
 4. **Luxury Gold & Obsidian Black Printable Ticket Template**:
-   - Modeled after the official golden invitation pass.
+   - Modeled after the official golden invitation pass with the official iFundAyiti logo.
    - Perforated tear-stub design with Haiti map watermark, hibiscus botanical motif, scannable QR code, barcode, admit count, and `@media print` PDF download support.
-   - Render URL: `GET /booking/ticket/:idOrCode`.
+   - Render URL: `GET /api/v1/booking/ticket/:idOrCode`.
 
 ================================================================================
 PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
@@ -173,18 +177,22 @@ Build a state-of-the-art Events experience on the public portal (`/events`, `/ev
   - Ticket Price: `$XX.XX` or `Complimentary (Free)`.
   - Remaining seats counter with animated progress bar.
   - Quantity selector (1 to 5 tickets).
-  - Form Fields: Attendee Full Name, Email Address, Phone Number, Special Notes/Dietary requirements.
+  - Form Fields:
+    - User Profile Summary (Read-only badge displaying logged-in attendee Name & Email).
+    - Phone Number input (`customerPhone`, optional).
+    - Special Notes / Dietary requirements textarea (`note`, optional).
+  - **Authentication Note**: User must be logged in. Pass user JWT token in header: `Authorization: Bearer <token>`. Do NOT pass customer name or email in payload; backend automatically assigns them from user profile.
   - **Registration Action**:
     - If Event is **FREE** or **VIRTUAL**:
       - Button: "Confirm Free Reservation".
-      - Calls `POST /booking` with `{ event: id, customerName, customerEmail, customerPhone, quantity }`.
-      - On success: Shows instant Success Modal with ticket details. If physical/hybrid, provides "Download Official Golden Ticket" button linking to `/ticket/:id`. If virtual, displays "Join Link" and notes that email has been sent.
+      - Calls `POST /api/v1/booking` with `{ event: id, customerPhone, quantity, note }`.
+      - On success: Shows instant Success Modal with ticket details. If physical/hybrid, provides "Download Official Golden Ticket" button linking to `/ticket/:id` (or direct backend view `/api/v1/booking/ticket/:id`). If virtual, displays "Join Link" and notes that email has been sent.
     - If Event is **PAID**:
       - Button: "Proceed to Secure Checkout ($XX.XX)".
-      - Calls `POST /booking`.
+      - Calls `POST /api/v1/booking` with `{ event: id, customerPhone, quantity, note }`.
       - Server returns Stripe Checkout URL (`checkoutUrl`).
-      - Redirects seamlessly to Stripe.
-      - Upon Stripe completion, returns to `/payment/success` and displays confirmed ticket pass.
+      - Redirects seamlessly to Stripe Checkout.
+      - Upon Stripe completion, returns to `/payment/success?session_id={CHECKOUT_SESSION_ID}&type=event` and displays confirmed ticket pass.
 
 ---
 
@@ -192,9 +200,9 @@ Build a state-of-the-art Events experience on the public portal (`/events`, `/ev
 - Route renders server-generated or client-matched ticket template from `GET /booking/ticket/:idOrCode`.
 - **Ticket Aesthetics**:
   - High-resolution luxury dark obsidian texture `#0E0E10` paired with rich metallic gold `#D4AF37`.
-  - Left Section: Haiti watermark map, floral hibiscus art, IFundAyiti logo, event title, category, date, time, location, dress code, and "Admit [Quantity]".
+  - Left Section: Haiti watermark map, floral hibiscus art, IFundAyiti logo, event title, category, date, time, location, dress code, Admission Quantity ("Admit [Qty]"), Total Price badge, and Ticket Holder name.
   - Perforation: Semicircular cutout notches with dashed tear-line.
-  - Right Stub: Metallic gold finish, IFundAyiti Event Ticket header, dynamically generated scannable QR Code, stylized barcode, and unique Monospace Ticket ID (`IFA-YYYY-XXXXX`).
+  - Right Stub: Metallic gold finish, IFundAyiti Event Ticket header, "ADMIT [Qty]", Price badge, dynamically generated scannable QR Code, stylized barcode, and unique Monospace Ticket ID (`IFA-YYYY-XXXXX`).
 - **Interactive Controls**:
   - "Download PDF / Print Ticket" button with browser print trigger (`window.print()`).
   - Mobile responsive: Stacks gracefully on smartphone screens while maintaining full print fidelity.
@@ -442,10 +450,85 @@ PART 3: COMPLETE BACKEND API REFERENCE & CONTRACTS
 ```
 
 #### C. Public View & Download Ticket HTML
-- **Method & Route**: `GET /booking/ticket/:idOrCode`
+- **Method & Route**: `GET /api/v1/booking/ticket/:idOrCode`
 - **Auth**: None (Public for ticket holders)
+- **Parameters**: Accepts either MongoDB booking `_id` OR uppercase `ticketCode` (e.g., `IFA-2026-8X7Q3`).
 - **Headers Returned**: `Content-Type: text/html`
-- **Behavior**: Returns the compiled obsidian black & metallic gold ticket page complete with QR code, Haiti silhouette watermark, barcode, and print CSS ready for browser viewing or PDF generation.
+- **Behavior**: Returns the compiled obsidian black & metallic gold ticket page complete with QR code, Haiti silhouette watermark, barcode, and print CSS ready for browser viewing, direct printing (`window.print()`), or PDF generation.
+
+#### D. Get All Bookings (Admin & User Scoped)
+- **Method & Route**: `GET /api/v1/booking`
+- **Auth**: Bearer Token (Admins see all; regular users automatically scoped to their own bookings)
+- **Query Parameters**:
+  - `event`: Event ObjectId to filter attendees for a specific event
+  - `status`: `pending` | `confirmed` | `attended` | `cancelled`
+  - `paymentStatus`: `pending` | `paid` | `free` | `failed`
+  - `checkedIn`: `true` | `false`
+  - `searchTerm`: Search across `customerName`, `customerEmail`, `customerPhone`, `ticketCode`
+  - `page`: Page number (default: 1)
+  - `limit`: Items per page (default: 10)
+- **Success Response (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Bookings retrieved successfully",
+  "data": [
+    {
+      "_id": "67375b42b4e019f4...",
+      "event": {
+        "_id": "67375a31b4e019f3...",
+        "title": "Annual Hope Gala 2026",
+        "type": "physical",
+        "category": "gala",
+        "startDate": "2026-04-26T18:00:00.000Z",
+        "location": "The Park Hotel",
+        "price": 150
+      },
+      "customerName": "Marcelle Alexandre",
+      "customerEmail": "marcelle@example.com",
+      "customerPhone": "+1 (305) 555-0199",
+      "quantity": 2,
+      "ticketCode": "IFA-2026-8X7Q3",
+      "status": "confirmed",
+      "paymentStatus": "paid",
+      "checkedIn": false,
+      "createdAt": "2026-09-15T12:00:00.000Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPage": 1
+  }
+}
+```
+
+#### E. Update Booking Status (Admin only)
+- **Method & Route**: `PATCH /api/v1/booking/:id`
+- **Auth**: Bearer Token (`admin` | `super_admin`)
+- **Request Body**:
+```json
+{
+  "status": "cancelled",
+  "note": "Refund requested by attendee"
+}
+```
+- **Behavior**: If status is updated to `cancelled`, the backend automatically decrements `reservedCount` on the associated Event to free up seat capacity.
+
+#### F. Delete Booking (Admin only)
+- **Method & Route**: `DELETE /api/v1/booking/:id`
+- **Auth**: Bearer Token (`admin` | `super_admin`)
+- **Success Response (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Booking deleted successfully",
+  "data": { ... }
+}
+```
 
 ================================================================================
 END OF SPECIFICATION
