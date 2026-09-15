@@ -30,7 +30,9 @@ const googleClient = new OAuth2Client(config.google?.client_id);
 //login
 const loginUserFromDB = async (payload: ILoginData, res: Response) => {
   const { email, password } = payload;
-  const isExistUser = await User.findOne({ email }).select('+password');
+  const isExistUser = await User.findOne({ email }).select(
+    '+password +status +rejectionReason',
+  );
   // console.log(isExistUser)
   if (!isExistUser) {
     throw new ApiError(StatusCodes.BAD_REQUEST, "User doesn't exist!");
@@ -44,7 +46,7 @@ const loginUserFromDB = async (payload: ILoginData, res: Response) => {
   if (isExistUser.status === 'blocked') {
     throw new ApiError(
       StatusCodes.BAD_REQUEST,
-      'Your account has been blocked. Please contact the support/administrator for further assistance.',
+      `Your account has been blocked. Please contact support/administrator for further assistance. ${isExistUser.rejectionReason && `Reason: ${isExistUser.rejectionReason}`}`,
     );
   }
 
@@ -462,7 +464,7 @@ const loginWithGoogleToDB = async (idToken: string) => {
     if (isExistUser.status === 'blocked') {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Your account has been blocked. Please contact support/administrator for further assistance.',
+        `Your account has been blocked. Please contact support/administrator for further assistance. ${isExistUser.rejectionReason && `Reason: ${isExistUser.rejectionReason}`}`,
       );
     }
 
@@ -476,7 +478,10 @@ const loginWithGoogleToDB = async (idToken: string) => {
       isExistUser.verified = true;
       isModified = true;
     }
-    if (picture && (!isExistUser.image || isExistUser.image.includes('profile.png'))) {
+    if (
+      picture &&
+      (!isExistUser.image || isExistUser.image.includes('profile.png'))
+    ) {
       isExistUser.image = picture;
       isModified = true;
     }

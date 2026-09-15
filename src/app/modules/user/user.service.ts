@@ -264,9 +264,17 @@ const changeStatusOfUser = async (
     updateStatus = isExistUser.status === 'active' ? 'blocked' : 'active';
   }
 
-  const updateData: Record<string, any> = { status: updateStatus };
-  if (rejectionReason !== undefined) {
-    updateData.rejectionReason = rejectionReason;
+  const updateData: Record<string, any> = {
+    status: updateStatus,
+  };
+
+  // Rejection reason is only allowed for blocked/rejected users
+  if (updateStatus === 'blocked' || updateStatus === 'rejected') {
+    if (rejectionReason !== undefined) {
+      updateData.rejectionReason = rejectionReason;
+    }
+  } else {
+    updateData.rejectionReason = '';
   }
 
   const result = await User.findByIdAndUpdate(
@@ -305,6 +313,9 @@ const updateUserByAdmin = async (id: string, payload: Partial<IUser>) => {
     if ((payload as any)[field] !== undefined) {
       updateData[field] = (payload as any)[field];
     }
+  }
+  if (payload.status !== 'blocked' && payload.status !== 'rejected') {
+    updateData.rejectionReason = '';
   }
 
   const result = await User.findByIdAndUpdate(
