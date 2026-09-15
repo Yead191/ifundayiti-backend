@@ -29,54 +29,15 @@ const getAllEventsFromDB = async (
   query: Record<string, any>,
   user?: JwtPayload,
 ) => {
-  const filter: Record<string, any> = {};
-
-  const isAdmin =
-    user && [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(user.role);
-
-  // If not admin, only show published events unless explicitly specified
-  if (!isAdmin) {
-    filter.status = 'published';
-  } else if (query.status) {
-    filter.status = query.status;
-  }
-
-  // Filter by category
-  if (query.category && query.category !== 'all') {
-    filter.category = query.category;
-  }
-
-  // Filter by event type (physical, virtual, hybrid)
-  if (query.type && query.type !== 'all') {
-    filter.type = query.type;
-  }
-
-  // Filter by pricingType (free, paid)
-  if (query.pricingType && query.pricingType !== 'all') {
-    filter.pricingType = query.pricingType;
-  }
-
-  // Filter by featured
-  if (query.featured !== undefined) {
-    filter.featured = query.featured === 'true' || query.featured === true;
-  }
-
-  // Filter upcoming or past
-  if (query.timeframe === 'upcoming') {
-    filter.startDate = { $gte: new Date() };
-  } else if (query.timeframe === 'past') {
-    filter.endDate = { $lt: new Date() };
-  }
-
-  delete query.category;
-  delete query.type;
-  delete query.pricingType;
-  delete query.featured;
-  delete query.timeframe;
-  delete query.status;
+  const initQuery =
+    user && [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN].includes(user.role)
+      ? {}
+      : {
+          status: 'published',
+        };
 
   const eventQuery = new QueryBuilder(
-    Event.find(filter).populate({
+    Event.find(initQuery).populate({
       path: 'createdBy',
       select: 'name email image role',
     }),
