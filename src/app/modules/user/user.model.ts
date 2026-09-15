@@ -34,6 +34,9 @@ const userSchema = new Schema<IUser, UserModal>(
       type: String,
       default: 'https://i.ibb.co/z5YHLV9/profile.png',
     },
+    phone: {
+      type: String,
+    },
     status: {
       type: String,
       enum: ['active', 'blocked', 'rejected', 'pending'],

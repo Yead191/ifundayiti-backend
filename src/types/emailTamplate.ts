@@ -292,3 +292,43 @@ export type IPartnerStatusUpdate = {
   rejectionReason?: string;
 };
 
+export type IEventBookingUserConfirmation = {
+  email: string;
+  name: string;
+  eventTitle: string;
+  eventCategory?: string;
+  eventType: 'physical' | 'virtual' | 'hybrid';
+  eventPricingType: 'free' | 'paid';
+  price: number;
+  startDate: string;
+  endDate?: string;
+  location?: string;
+  venueAddress?: string;
+  virtualLink?: string;
+  ticketCode?: string;
+  qrCodeDataUrl?: string;
+  ticketUrl?: string;
+  transactionId?: string;
+  bookingId: string;
+  quantity?: number;
+  dressCode?: string;
+};
+
+export type IEventBookingAdminNotification = {
+  adminEmail: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  eventTitle: string;
+  eventType: 'physical' | 'virtual' | 'hybrid';
+  eventPricingType: 'free' | 'paid';
+  price: number;
+  ticketCode?: string;
+  bookingId: string;
+  transactionId?: string;
+  startDate: string;
+  location?: string;
+  quantity?: number;
+};
+
+

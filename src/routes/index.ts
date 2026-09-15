@@ -30,6 +30,8 @@ import { PartnerRoutes } from '../app/modules/partner/partner.route';
 import { FolderRoutes } from '../app/modules/folder/folder.route';
 import { BlogRoutes } from '../app/modules/blogs/blog/blog.route';
 import { BlogCategoryRoutes } from '../app/modules/blogs/blogcategory/blogcategory.route';
+import { EventRoutes } from '../app/modules/event/event.route';
+import { BookingsRoutes } from '../app/modules/bookings/bookings.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -170,6 +172,18 @@ const apiRoutes = [
   {
     path: '/blogcategory',
     route: BlogCategoryRoutes,
+  },
+  {
+    path: '/event',
+    route: EventRoutes,
+  },
+  {
+    path: '/booking',
+    route: BookingsRoutes,
+  },
+  {
+    path: '/bookings',
+    route: BookingsRoutes,
   },
 ];
 

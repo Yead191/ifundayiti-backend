@@ -9,6 +9,7 @@ import { handleInvoicePaymentSucceeded } from '../handlers/handleInvoicePaymentS
 import { handleInvoicePaymentFailed } from '../handlers/handleInvoicePaymentFailed';
 import handleSubscriptionDelete from '../handlers/handleSubscriptionDelete';
 import { handleSubscriptionUpdated } from '../handlers/handleSubscriptionUpdated';
+import { handleEventBooking } from '../handlers/handleEventBooking';
 
 export const handleStripeWebhook = async (req: Request, res: Response) => {
   try {
@@ -42,8 +43,15 @@ export const handleStripeWebhook = async (req: Request, res: Response) => {
           await handleOrderPurchase(session); //order
         } else if (session.metadata?.membershipId) {
           await handleMembershipCheckout(session);
+        } else if (
+          session.metadata?.type === 'event' ||
+          session.metadata?.eventId ||
+          session.metadata?.bookingId
+        ) {
+          await handleEventBooking(session);
         }
         break;
+
       case 'customer.subscription.created':
         // Membership checkout is handled on 'checkout.session.completed' to prevent duplicate execution & Mongo WriteConflicts
         break;

@@ -1,0 +1,452 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: EVENT & TICKET MANAGEMENT SYSTEM
+(FOR ADMIN DASHBOARD & PUBLIC WEBSITE)
+================================================================================
+
+Target Applications:
+  1. Admin Dashboard (/admin/events, /admin/event-bookings, /admin/event-checkin)
+  2. Public User Website (/events, /events/:id, /ticket/:idOrCode)
+Base API URLs:
+  - Event Endpoints:    `/event`       (e.g. `http://localhost:5000/api/v1/event`)
+  - Booking Endpoints:  `/booking`     (e.g. `http://localhost:5000/api/v1/booking`)
+
+================================================================================
+EXECUTIVE SUMMARY: COMPLETE EVENT & TICKET ARCHITECTURE
+================================================================================
+1. **Event Types & Formats**:
+   - `category`: 'fundraiser' | 'pitch-night' | 'workshop' | 'gala'
+   - `type`: 'physical' | 'virtual' | 'hybrid'
+   - `pricingType`: 'free' | 'paid'
+   - `remainingSeats`: Dynamically computed as `Math.max(0, capacity - reservedCount)`
+   - Speakers subdocuments (`name`, `role`, `avatar`), `dressCode`, `virtualLink`, `featured`, `status` ('draft' | 'published' | 'cancelled' | 'completed').
+
+2. **Automated Registration Workflow**:
+   - **Virtual Events**: Always FREE. Immediately confirmed. Confirmation email dispatches the private virtual meeting link (`virtualLink`). No physical ticket is generated.
+   - **Physical & Hybrid Events (FREE)**: Free RSVP. Immediately confirmed. Auto-generates unique Ticket ID (`IFA-YYYY-XXXXXX`) and scannable QR code. Confirmation email sent to attendee and admin (`config.support.admin`).
+   - **Physical & Hybrid Events (PAID)**: Creates pending booking. Redirects user to Stripe Checkout (`POST /booking`). Webhook catches `checkout.session.completed`, confirms booking, generates Ticket ID + QR code, creates `Transaction` (`category: 'Event'`, `type: 'Credit'`), and emails golden ticket to attendee and admin.
+
+3. **Door Staff Live Check-in Scanner**:
+   - `POST /booking/check-in/:ticketCode` (or `POST /booking/check-in` with `{ ticketCode }`).
+   - Verifies ticket authenticity, flags unpaid/cancelled bookings, prevents duplicate admissions by returning the exact previous check-in timestamp.
+
+4. **Luxury Gold & Obsidian Black Printable Ticket Template**:
+   - Modeled after the official golden invitation pass.
+   - Perforated tear-stub design with Haiti map watermark, hibiscus botanical motif, scannable QR code, barcode, admit count, and `@media print` PDF download support.
+   - Render URL: `GET /booking/ticket/:idOrCode`.
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build High-End Event & Ticket Management in Admin Dashboard
+
+Implement a comprehensive, enterprise-grade Event Management, Attendee Booking, and Door Staff QR Check-in system in the Admin Dashboard (`/admin/events`, `/admin/event-bookings`, and `/admin/event-checkin`).
+
+---
+
+#### 1. EVENT ANALYTICS & STATS WIDGETS
+- Fetch stats via `GET /event/stats/overview`:
+  - **Total Events**: Combined active, completed, and draft events.
+  - **Total Tickets Reserved / Sold**: Overall attendee registration count across all events.
+  - **Total Event Revenue**: Financial inflow from paid physical/hybrid tickets.
+  - **Upcoming Gatherings**: Count of published events where `startDate > now`.
+- Render 4 luxury GlassCards with subtle gold/navy border highlights, metric counters, and trend badges.
+
+---
+
+#### 2. EVENT MANAGEMENT TABLE & ACTIONS (`/admin/events`)
+- Fetch events using `GET /event` (supports pagination, search, category, type, and status filtering).
+- **Filter Toolbar**:
+  - Search bar: Real-time search across event title, location, and description.
+  - Category Filter: All | Fundraiser | Pitch Night | Workshop | Gala.
+  - Format Filter: All | Physical | Hybrid | Virtual.
+  - Status Filter: All | Published | Draft | Cancelled | Completed.
+  - "+ Create New Event" primary button (styled in Haitian Navy `#0033A0` or Luxury Gold `#D4AF37`).
+- **Table Columns**:
+  1. **Event Banner & Title**: Image thumbnail with fallback, title, and "Featured" badge if `featured === true`.
+  2. **Category & Format**: Category badge (e.g., Gala in gold, Fundraiser in emerald, Workshop in blue) and format indicator (Physical/Virtual/Hybrid icon).
+  3. **Date & Schedule**: Formatted date (e.g., "Saturday, Apr 26, 2025 • 6:00 PM").
+  4. **Pricing**: Badge showing "FREE" or bold price (e.g. "$150.00 USD").
+  5. **Capacity & Attendance**: Visual progress bar showing `reservedCount` / `capacity` and `${remainingSeats} seats left`. Turns red when full.
+  6. **Status**: Select dropdown or badge (Draft, Published, Cancelled, Completed). Quick toggle between Draft and Published.
+  7. **Actions**:
+     - **Edit**: Opens slide-out drawer with pre-filled event form.
+     - **View Bookings**: Deep-links to `/admin/event-bookings?event=${event._id}` to see all attendees for this specific event.
+     - **Delete**: Confirmation modal calling `DELETE /event/:id`.
+
+---
+
+#### 3. CREATE & EDIT EVENT MODAL
+- Form schema matching `POST /event` and `PATCH /event/:id`:
+  - **Basic Info**: Title (required), Category (dropdown), Format/Type (Physical / Virtual / Hybrid), Featured (Switch), Status (Draft / Published).
+  - **Pricing**: Pricing Type (Free vs Paid). If Paid: Price input ($ USD). If Free: Price locked to $0.
+  - **Dates & Venue**:
+    - Start Date & Time picker, End Date & Time picker.
+    - If Physical or Hybrid: Location Name (e.g., "The Park Hotel"), Full Venue Address, Dress Code (e.g., "Formal Attire / Black Tie Optional").
+    - If Virtual or Hybrid: Virtual Link (Zoom / Google Meet / YouTube Live stream URL).
+  - **Capacity**: Maximum attendee seats limit (number).
+  - **Speakers Sub-form (Dynamic Array)**:
+    - Add multiple speakers with `name`, `role` (e.g., "Keynote Speaker", "Founder"), and `avatar` image URL.
+  - **Cover Image & Description**:
+    - Image URL or file uploader.
+    - Rich text description with WYSIWYG or Markdown editor.
+
+---
+
+#### 4. ATTENDEE & TICKET BOOKINGS MANAGEMENT (`/admin/event-bookings`)
+- Fetch bookings via `GET /booking` (supports `?event=${id}&status=${status}&checkedIn=${true|false}`).
+- **Toolbar**:
+  - Filter by Event selector dropdown.
+  - Check-in status filter (All | Checked In | Not Checked In).
+  - Export CSV of attendee list (Name, Email, Phone, Ticket ID, Status, Checked-in timestamp).
+- **Table Columns**:
+  1. **Ticket ID**: Monospace golden badge (e.g. `IFA-2025-8X7Q3`). Clicking copies to clipboard.
+  2. **Attendee Name & Contact**: Name, email address, and phone number.
+  3. **Event**: Event title and date.
+  4. **Admit Count**: Number of tickets (`quantity`, e.g. "Admit 2").
+  5. **Payment Status**: Green pill (`PAID` or `FREE`), yellow (`PENDING`).
+  6. **Check-in Status**:
+     - Checked In: Green checkmark with timestamp (e.g. "Checked in at 6:45 PM").
+     - Not Checked In: Gray badge "Awaiting Arrival".
+  7. **Actions**:
+     - **Manual Check-In Toggle**: One-click check-in if attendee forgot physical ticket.
+     - **Print / View Ticket**: Opens `GET /booking/ticket/:id` in new tab to print or save as PDF.
+     - **Cancel Booking**: Re-credits seat capacity and updates status to `cancelled`.
+
+---
+
+#### 5. LIVE DOOR CHECK-IN SCANNER (`/admin/event-checkin`)
+- Designed for event staff at the entrance:
+  - **Camera QR Scanner**: Web camera feed that auto-detects QR codes.
+  - **Manual Code Input**: Input field for typing the 14-character Ticket ID (`IFA-2025-XXXXX`) with instant submit.
+  - **Instant Verification Display**:
+    - On Scan: Calls `POST /booking/check-in/:ticketCode`.
+    - **Success (Green screen flash + chime)**: Shows "ADMIT ONE / TWO", Attendee Name, Event Name, and welcome prompt.
+    - **Already Scanned Warning (Amber)**: Shows "WARNING: Ticket already scanned today at [Time]". Prevents duplicate entry!
+    - **Invalid / Unpaid / Cancelled (Red)**: Displays specific denial reason.
+```
+
+================================================================================
+PART 2: COPY-PASTE PROMPT FOR PUBLIC WEBSITE
+================================================================================
+```markdown
+### TASK: Build Luxury Events & Ticket Reservation Experience on Public Website
+
+Build a state-of-the-art Events experience on the public portal (`/events`, `/events/:id`, and `/ticket/:idOrCode`).
+
+---
+
+#### 1. HERO FEATURED EVENT BANNER (`/events`)
+- Fetch events using `GET /event?featured=true&status=published`.
+- Display a cinematic, dark luxury banner with obsidian black background, gold typography, and countdown timer (`Days : Hours : Mins : Secs`) until event start.
+- Highlights: Event Category, Title, Date & Time, Venue / Format badge.
+- Primary CTA: "Reserve Seat" / "Get Tickets" (scrolls to booking card or opens modal).
+
+---
+
+#### 2. EVENT CATALOG & FILTER TABS (`/events`)
+- Fetch all published events with `GET /event?status=published`.
+- **Category Filter Tabs**: All Events | Gala & Banquets | Fundraisers | Pitch Nights | Workshops.
+- **Format Filter Pill**: All | In-Person (Physical) | Virtual Stream | Hybrid.
+- **Event Card**:
+  - Image banner with category badge.
+  - Date & Time display with calendar icon.
+  - Title and short excerpt description.
+  - Location chip (e.g. "The Park Hotel, Miami" or "Online Webinar").
+  - Price Tag: "FREE RSVP" or "$XX.XX USD".
+  - Seat Status: `${remainingSeats} seats left` (or "SOLD OUT" badge if full).
+  - CTA Button: "View Details & Register &rarr;".
+
+---
+
+#### 3. EVENT DETAILS PAGE (`/events/:id`)
+- Fetch event details with `GET /event/:id`.
+- **Hero Section**:
+  - Large banner with obsidian & gold gradient overlay.
+  - Breadcrumb navigation: `Events > [Category] > [Event Title]`.
+  - Date, time, venue address with Google Maps link, and dress code chip (e.g., "Dress Code: Black Tie / Formal Attire").
+- **Content Tabs / Sections**:
+  - **About the Event**: Comprehensive description and schedule.
+  - **Distinguished Speakers**: Grid of speaker cards with circular avatar, gold border, name, and role/title.
+  - **Venue & Directions**: Location map preview, parking details, and venue address.
+- **Sticky Booking Card (Right sidebar on desktop, bottom sheet on mobile)**:
+  - Ticket Price: `$XX.XX` or `Complimentary (Free)`.
+  - Remaining seats counter with animated progress bar.
+  - Quantity selector (1 to 5 tickets).
+  - Form Fields: Attendee Full Name, Email Address, Phone Number, Special Notes/Dietary requirements.
+  - **Registration Action**:
+    - If Event is **FREE** or **VIRTUAL**:
+      - Button: "Confirm Free Reservation".
+      - Calls `POST /booking` with `{ event: id, customerName, customerEmail, customerPhone, quantity }`.
+      - On success: Shows instant Success Modal with ticket details. If physical/hybrid, provides "Download Official Golden Ticket" button linking to `/ticket/:id`. If virtual, displays "Join Link" and notes that email has been sent.
+    - If Event is **PAID**:
+      - Button: "Proceed to Secure Checkout ($XX.XX)".
+      - Calls `POST /booking`.
+      - Server returns Stripe Checkout URL (`checkoutUrl`).
+      - Redirects seamlessly to Stripe.
+      - Upon Stripe completion, returns to `/payment/success` and displays confirmed ticket pass.
+
+---
+
+#### 4. OFFICIAL LUXURY GOLDEN TICKET PAGE (`/ticket/:idOrCode`)
+- Route renders server-generated or client-matched ticket template from `GET /booking/ticket/:idOrCode`.
+- **Ticket Aesthetics**:
+  - High-resolution luxury dark obsidian texture `#0E0E10` paired with rich metallic gold `#D4AF37`.
+  - Left Section: Haiti watermark map, floral hibiscus art, IFundAyiti logo, event title, category, date, time, location, dress code, and "Admit [Quantity]".
+  - Perforation: Semicircular cutout notches with dashed tear-line.
+  - Right Stub: Metallic gold finish, IFundAyiti Event Ticket header, dynamically generated scannable QR Code, stylized barcode, and unique Monospace Ticket ID (`IFA-YYYY-XXXXX`).
+- **Interactive Controls**:
+  - "Download PDF / Print Ticket" button with browser print trigger (`window.print()`).
+  - Mobile responsive: Stacks gracefully on smartphone screens while maintaining full print fidelity.
+```
+
+================================================================================
+PART 3: COMPLETE BACKEND API REFERENCE & CONTRACTS
+================================================================================
+
+### 1. EVENT ENDPOINTS (`/event` or `/events`)
+
+#### A. Create Event (Admin only)
+- **Method & Route**: `POST /event`
+- **Auth**: Bearer Token (`admin` | `super_admin`)
+- **Headers**: `Content-Type: application/json`
+- **Request Body**:
+```json
+{
+  "title": "Annual Hope Gala 2025",
+  "description": "An evening of impact, connection, and hope dedicated to building self-sustaining infrastructure in Haiti.",
+  "category": "gala",
+  "type": "physical",
+  "pricingType": "paid",
+  "price": 150,
+  "capacity": 250,
+  "startDate": "2025-04-26T18:00:00.000Z",
+  "endDate": "2025-04-26T23:00:00.000Z",
+  "location": "The Park Hotel",
+  "venueAddress": "8348 Fairfield Avenue, Port Haron, MI",
+  "dressCode": "Formal Attire / Black Tie",
+  "featured": true,
+  "image": "https://images.unsplash.com/photo-1511578314322-379afb476865",
+  "status": "published",
+  "speakers": [
+    {
+      "name": "Jean-Pierre Dupont",
+      "role": "Keynote Speaker & Philanthropist",
+      "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+    }
+  ]
+}
+```
+- **Success Response (201 Created)**:
+```json
+{
+  "statusCode": 201,
+  "success": true,
+  "message": "Event created successfully",
+  "data": {
+    "_id": "67375a31b4e019f3...",
+    "title": "Annual Hope Gala 2025",
+    "category": "gala",
+    "type": "physical",
+    "pricingType": "paid",
+    "price": 150,
+    "capacity": 250,
+    "reservedCount": 0,
+    "remainingSeats": 250,
+    "featured": true,
+    "status": "published",
+    "createdAt": "2026-09-15T11:20:00.000Z"
+  }
+}
+```
+
+#### B. Get All Events (Public / Filterable)
+- **Method & Route**: `GET /event`
+- **Query Parameters**:
+  - `searchTerm`: Search across title, location, and description.
+  - `category`: `fundraiser` | `pitch-night` | `workshop` | `gala`
+  - `type`: `physical` | `virtual` | `hybrid`
+  - `pricingType`: `free` | `paid`
+  - `featured`: `true` | `false`
+  - `status`: `published` (default for public) | `draft` | `cancelled`
+  - `page`: Page number (default: 1)
+  - `limit`: Items per page (default: 10)
+  - `sort`: Sorting field (e.g. `startDate` or `-createdAt`)
+- **Success Response (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Events retrieved successfully",
+  "data": [
+    {
+      "_id": "67375a31b4e019f3...",
+      "title": "Annual Hope Gala 2025",
+      "category": "gala",
+      "type": "physical",
+      "pricingType": "paid",
+      "price": 150,
+      "capacity": 250,
+      "reservedCount": 42,
+      "remainingSeats": 208,
+      "startDate": "2025-04-26T18:00:00.000Z",
+      "endDate": "2025-04-26T23:00:00.000Z",
+      "location": "The Park Hotel",
+      "featured": true,
+      "status": "published"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPage": 1
+  }
+}
+```
+
+#### C. Get Event Analytics Overview (Admin only)
+- **Method & Route**: `GET /event/stats/overview`
+- **Auth**: Bearer Token (`admin` | `super_admin`)
+- **Success Response (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Event statistics retrieved successfully",
+  "data": {
+    "totalEvents": 12,
+    "publishedEvents": 9,
+    "draftEvents": 3,
+    "totalReservedSeats": 480,
+    "totalCapacity": 1200,
+    "totalEstimatedRevenue": 72000
+  }
+}
+```
+
+---
+
+### 2. BOOKING & TICKET ENDPOINTS (`/booking`)
+
+#### A. Reserve or Purchase Event Ticket
+- **Method & Route**: `POST /booking`
+- **Auth**: Bearer Token (`user` | `admin` | `super_admin` | `vendor`)
+- **Note**: `customerName` and `customerEmail` are securely extracted directly from the authenticated JWT user session. Do NOT send name or email in the request payload.
+- **Request Body**:
+```json
+{
+  "event": "67375a31b4e019f3...",
+  "customerPhone": "+1 (305) 555-0199",
+  "quantity": 1,
+  "note": "Dietary request: Vegetarian"
+}
+```
+
+
+- **Scenario 1: FREE Event or VIRTUAL Event RSVP**
+  - **Status Code**: `200 OK`
+  - **Response Payload**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Event ticket reserved successfully",
+  "data": {
+    "booking": {
+      "_id": "67375b42b4e019f4...",
+      "event": "67375a31b4e019f3...",
+      "customerName": "Marcelle Alexandre",
+      "customerEmail": "marcelle@example.com",
+      "quantity": 1,
+      "price": 0,
+      "ticketCode": "IFA-2025-8X7Q3",
+      "checkedIn": false,
+      "status": "confirmed",
+      "paymentStatus": "free"
+    },
+    "isPaid": false,
+    "ticketCode": "IFA-2025-8X7Q3",
+    "message": "Spot reserved successfully!"
+  }
+}
+```
+
+- **Scenario 2: PAID Event (Physical or Hybrid)**
+  - **Status Code**: `200 OK`
+  - **Response Payload**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Payment session created successfully",
+  "data": {
+    "booking": {
+      "_id": "67375c12b4e019f5...",
+      "event": "67375a31b4e019f3...",
+      "customerName": "Marcelle Alexandre",
+      "customerEmail": "marcelle@example.com",
+      "quantity": 1,
+      "price": 150,
+      "status": "pending",
+      "paymentStatus": "pending"
+    },
+    "isPaid": true,
+    "checkoutUrl": "https://checkout.stripe.com/c/pay/cs_test_a1b2c3d4..."
+  }
+}
+```
+
+#### B. Live Door Check-in Scanning (Staff / Admin)
+- **Method & Route**: `POST /booking/check-in/:ticketCode` (or `POST /booking/check-in` with `{ "ticketCode": "IFA-2025-8X7Q3" }`)
+- **Auth**: Bearer Token (`admin` | `super_admin`)
+- **Scenario 1: Successful First-Time Check-In**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Check-in successful! Welcome to the event.",
+  "data": {
+    "alreadyCheckedIn": false,
+    "message": "Check-in successful! Welcome to the event.",
+    "booking": {
+      "_id": "67375b42b4e019f4...",
+      "ticketCode": "IFA-2025-8X7Q3",
+      "customerName": "Marcelle Alexandre",
+      "checkedIn": true,
+      "checkedInAt": "2026-09-15T18:32:10.512Z",
+      "status": "attended"
+    }
+  }
+}
+```
+
+- **Scenario 2: Already Checked In (Double Entry Prevention)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Already checked in on 9/15/2026, 6:32:10 PM.",
+  "data": {
+    "alreadyCheckedIn": true,
+    "message": "Already checked in on 9/15/2026, 6:32:10 PM.",
+    "booking": {
+      "_id": "67375b42b4e019f4...",
+      "ticketCode": "IFA-2025-8X7Q3",
+      "customerName": "Marcelle Alexandre",
+      "checkedIn": true,
+      "checkedInAt": "2026-09-15T18:32:10.512Z"
+    }
+  }
+}
+```
+
+#### C. Public View & Download Ticket HTML
+- **Method & Route**: `GET /booking/ticket/:idOrCode`
+- **Auth**: None (Public for ticket holders)
+- **Headers Returned**: `Content-Type: text/html`
+- **Behavior**: Returns the compiled obsidian black & metallic gold ticket page complete with QR code, Haiti silhouette watermark, barcode, and print CSS ready for browser viewing or PDF generation.
+
+================================================================================
+END OF SPECIFICATION
+================================================================================

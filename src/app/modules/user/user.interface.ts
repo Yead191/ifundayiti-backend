@@ -37,6 +37,7 @@ export interface IUser {
   rejectionReason?: string;
 
   mustChangePassword: boolean;
+  phone?: string;
 
   company?: string;
 

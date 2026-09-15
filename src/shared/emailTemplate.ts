@@ -45,6 +45,10 @@ import {
   partnerApplicationAdminNotification,
   partnerStatusUpdate,
 } from '../templates/partnerTemplate';
+import {
+  eventBookingUserConfirmation,
+  eventBookingAdminNotification,
+} from '../templates/eventBookingTemplate';
 
 export const emailTemplate = {
   createAccount,
@@ -76,5 +80,8 @@ export const emailTemplate = {
   partnerApplicationUserConfirmation,
   partnerApplicationAdminNotification,
   partnerStatusUpdate,
+  eventBookingUserConfirmation,
+  eventBookingAdminNotification,
 };
+
 
