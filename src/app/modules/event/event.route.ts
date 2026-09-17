@@ -7,16 +7,29 @@ import { EventValidation } from './event.validation';
 
 const router = express.Router();
 
+const eventUploadFields = [
+  {
+    name: 'image',
+    maxCount: 1,
+  },
+  {
+    name: 'avatar',
+    maxCount: 10,
+  },
+];
+
 router
   .route('/')
   .post(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    fileUploadHandler(),
+    fileUploadHandler(eventUploadFields),
     (req: Request, res: Response, next: NextFunction) => {
       if (req.body.data) {
-        req.body = EventValidation.createEventZodSchema.parse({
-          body: JSON.parse(req.body.data),
+        const parsed = JSON.parse(req.body.data);
+        EventValidation.createEventZodSchema.parse({
+          body: parsed,
         });
+        req.body = parsed;
       }
       return EventController.createEvent(req, res, next);
     },
@@ -24,22 +37,32 @@ router
   .get(EventController.getAllEvents);
 
 router.get(
+  '/stats/overview',
+  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+  EventController.getEventStats,
+);
+
+router.get(
   '/stats',
   auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
   EventController.getEventStats,
 );
+
+router.get('/upcoming', EventController.getNearestUpcomingEvent);
 
 router
   .route('/:id')
   .get(EventController.getSingleEvent)
   .patch(
     auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-    fileUploadHandler(),
+    fileUploadHandler(eventUploadFields),
     (req: Request, res: Response, next: NextFunction) => {
       if (req.body.data) {
-        req.body = EventValidation.updateEventZodSchema.parse({
-          body: JSON.parse(req.body.data),
+        const parsed = JSON.parse(req.body.data);
+        EventValidation.updateEventZodSchema.parse({
+          body: parsed,
         });
+        req.body = parsed;
       }
       return EventController.updateEvent(req, res, next);
     },

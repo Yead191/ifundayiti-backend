@@ -103,6 +103,27 @@ const updateEventInDB = async (
     unlinkFile(existingEvent.image);
   }
 
+  // If speakers are updated, preserve existing avatar if not re-uploaded, and unlink old replaced avatar
+  if (
+    payload.speakers &&
+    Array.isArray(payload.speakers) &&
+    existingEvent.speakers
+  ) {
+    payload.speakers.forEach((sp, idx) => {
+      const oldSpeaker = existingEvent.speakers?.[idx];
+      if (!sp.avatar && oldSpeaker?.avatar) {
+        sp.avatar = oldSpeaker.avatar;
+      } else if (
+        sp.avatar &&
+        oldSpeaker?.avatar &&
+        oldSpeaker.avatar !== sp.avatar &&
+        !oldSpeaker.avatar.startsWith('http')
+      ) {
+        unlinkFile(oldSpeaker.avatar);
+      }
+    });
+  }
+
   const result = await Event.findByIdAndUpdate(
     id,
     { $set: payload },
@@ -126,12 +147,31 @@ const deleteEventFromDB = async (id: string): Promise<IEvent | null> => {
     unlinkFile(existingEvent.image);
   }
 
+  if (existingEvent.speakers && Array.isArray(existingEvent.speakers)) {
+    existingEvent.speakers.forEach(sp => {
+      if (sp.avatar && !sp.avatar.startsWith('http')) {
+        unlinkFile(sp.avatar);
+      }
+    });
+  }
+
   const result = await Event.findByIdAndDelete(id);
   return result;
 };
 
-const getEventStatsFromDB = async () => {
+const getEventStatsFromDB = async (query: Record<string, any> = {}) => {
   const now = new Date();
+
+  const eventFilter: Record<string, any> = {};
+  const bookingFilter: Record<string, any> = {
+    status: { $ne: 'cancelled' },
+  };
+
+  const targetEventId = query?.event || query?.eventId;
+  if (targetEventId && Types.ObjectId.isValid(targetEventId)) {
+    eventFilter._id = new Types.ObjectId(targetEventId);
+    bookingFilter.event = new Types.ObjectId(targetEventId);
+  }
 
   const [
     totalEvents,
@@ -140,19 +180,68 @@ const getEventStatsFromDB = async () => {
     upcomingEvents,
     pastEvents,
     totalBookings,
+    bookingAggregates,
     revenueStats,
   ] = await Promise.all([
-    Event.countDocuments(),
-    Event.countDocuments({ status: 'published' }),
-    Event.countDocuments({ status: 'draft' }),
-    Event.countDocuments({ startDate: { $gte: now }, status: 'published' }),
-    Event.countDocuments({ endDate: { $lt: now } }),
-    Bookings.countDocuments({ status: { $in: ['confirmed', 'attended'] } }),
+    Event.countDocuments(eventFilter),
+    Event.countDocuments({ ...eventFilter, status: 'published' }),
+    Event.countDocuments({ ...eventFilter, status: 'draft' }),
+    Event.countDocuments({
+      ...eventFilter,
+      startDate: { $gte: now },
+      status: 'published',
+    }),
+    Event.countDocuments({ ...eventFilter, endDate: { $lt: now } }),
+    // Count all active bookings for event(s)
+    Bookings.countDocuments(bookingFilter),
+    // Aggregate total tickets/seats reserved across active bookings
     Bookings.aggregate([
-      { $match: { paymentStatus: 'paid' } },
-      { $group: { _id: null, totalRevenue: { $sum: '$totalPrice' } } },
+      { $match: bookingFilter },
+      {
+        $group: {
+          _id: null,
+          totalTicketsReserved: { $sum: { $ifNull: ['$quantity', 1] } },
+          paidBookings: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'paid'] }, 1, 0] },
+          },
+          freeBookings: {
+            $sum: { $cond: [{ $eq: ['$paymentStatus', 'free'] }, 1, 0] },
+          },
+          totalCheckedIn: {
+            $sum: { $cond: [{ $eq: ['$checkedIn', true] }, 1, 0] },
+          },
+        },
+      },
+    ]),
+    // Aggregate revenue from paid bookings (support updatedPrice, price, or totalPrice)
+    Bookings.aggregate([
+      {
+        $match: {
+          ...bookingFilter,
+          paymentStatus: 'paid',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: {
+              $cond: [
+                { $gt: ['$updatedPrice', 0] },
+                '$updatedPrice',
+                { $ifNull: ['$price', { $ifNull: ['$totalPrice', 0] }] },
+              ],
+            },
+          },
+        },
+      },
     ]),
   ]);
+
+  const bAgg = bookingAggregates[0] || {};
+  const totalRevenue = revenueStats[0]?.totalRevenue || 0;
+  const totalTickets = bAgg.totalTicketsReserved || totalBookings;
+  const totalCheckedIn = bAgg.totalCheckedIn || 0;
 
   return {
     totalEvents,
@@ -161,8 +250,68 @@ const getEventStatsFromDB = async () => {
     upcomingEvents,
     pastEvents,
     totalBookings,
-    totalRevenue: revenueStats[0]?.totalRevenue || 0,
+    totalTicketsReserved: totalTickets,
+    totalReservedSeats: totalTickets,
+    totalRevenue,
+    totalCheckedIn,
   };
+};
+
+const getNearestUpcomingEventFromDB = async (
+  query?: Record<string, unknown>,
+): Promise<IEvent | null> => {
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const utcStartOfToday = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      0,
+      0,
+      0,
+      0,
+    ),
+  );
+  const thresholdDate = new Date(
+    Math.min(startOfToday.getTime(), utcStartOfToday.getTime()),
+  );
+
+  const filter: Record<string, any> = {
+    status: 'published',
+    $or: [
+      { endDate: { $gte: now } },
+      { startDate: { $gte: thresholdDate } },
+      { endDate: { $gte: thresholdDate } },
+    ],
+  };
+
+  if (query?.category) {
+    filter.category = query.category;
+  }
+  if (query?.type) {
+    filter.type = query.type;
+  }
+  if (query?.featured !== undefined) {
+    filter.featured = query.featured === 'true' || query.featured === true;
+  }
+
+  const event = await Event.findOne(filter)
+    .sort({ startDate: 1 })
+    .populate({
+      path: 'createdBy',
+      select: 'name email image role',
+    });
+
+  return event;
 };
 
 export const EventService = {
@@ -172,4 +321,6 @@ export const EventService = {
   updateEventInDB,
   deleteEventFromDB,
   getEventStatsFromDB,
+  getNearestUpcomingEventFromDB,
 };
+

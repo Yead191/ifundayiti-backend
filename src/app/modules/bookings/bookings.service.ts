@@ -461,7 +461,9 @@ const getAllBookings = async (user: JwtPayload, query: Record<string, any>) => {
     user.role,
   );
 
-  const initQuery: Record<string, any> = {};
+  const initQuery: Record<string, any> = {
+    paymentStatus: { $in: ['paid', 'free'] },
+  };
 
   if (!isAdmin) {
     // Non-admin can only see their own bookings

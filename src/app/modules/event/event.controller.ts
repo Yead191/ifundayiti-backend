@@ -2,21 +2,23 @@ import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
 import catchAsync from '../../../shared/catchAsync';
 import sendResponse from '../../../shared/sendResponse';
-import { getSingleFilePath } from '../../../shared/getFilePath';
+
 import { EventService } from './event.service';
+import { formatEventPayloadWithFiles } from './event.constants';
+
+/**
+ * Normalizes event payload and correctly places uploaded files:
+ * - `image` -> `data.image` (Event banner)
+ * - `avatar` -> `data.speakers[i].avatar` (Inside speakerSchema subdocuments)
+ */
 
 const createEvent = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
-  const image = getSingleFilePath(req.files, 'image');
-
-  const data = req.body.data ? JSON.parse(req.body.data) : req.body;
-  if (image) {
-    data.image = image;
-  }
+  const data = formatEventPayloadWithFiles(req);
 
   const result = await EventService.createEventToDB(user, data);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.CREATED,
     message: 'Event created successfully',
@@ -28,7 +30,7 @@ const getAllEvents = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
   const result = await EventService.getAllEventsFromDB(req.query, user);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
     message: 'Events retrieved successfully',
@@ -41,7 +43,7 @@ const getSingleEvent = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await EventService.getSingleEventFromDB(id);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
     message: 'Event retrieved successfully',
@@ -51,16 +53,11 @@ const getSingleEvent = catchAsync(async (req: Request, res: Response) => {
 
 const updateEvent = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const image = getSingleFilePath(req.files, 'image');
-
-  const data = req.body.data ? JSON.parse(req.body.data) : req.body;
-  if (image) {
-    data.image = image;
-  }
+  const data = formatEventPayloadWithFiles(req);
 
   const result = await EventService.updateEventInDB(id, data);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
     message: 'Event updated successfully',
@@ -72,7 +69,7 @@ const deleteEvent = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
   const result = await EventService.deleteEventFromDB(id);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
     message: 'Event deleted successfully',
@@ -81,15 +78,30 @@ const deleteEvent = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getEventStats = catchAsync(async (req: Request, res: Response) => {
-  const result = await EventService.getEventStatsFromDB();
+  const result = await EventService.getEventStatsFromDB(req.query);
 
-  sendResponse(res, {
+  return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
     message: 'Event statistics retrieved successfully',
     data: result,
   });
 });
+
+const getNearestUpcomingEvent = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await EventService.getNearestUpcomingEventFromDB(req.query);
+
+    return sendResponse(res, {
+      success: true,
+      statusCode: StatusCodes.OK,
+      message: result
+        ? 'Nearest upcoming event retrieved successfully'
+        : 'No upcoming events found',
+      data: result,
+    });
+  },
+);
 
 export const EventController = {
   createEvent,
@@ -98,4 +110,6 @@ export const EventController = {
   updateEvent,
   deleteEvent,
   getEventStats,
+  getNearestUpcomingEvent,
 };
+

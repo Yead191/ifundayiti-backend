@@ -141,7 +141,10 @@ Build a state-of-the-art Events experience on the public portal (`/events`, `/ev
 ---
 
 #### 1. HERO FEATURED EVENT BANNER (`/events`)
-- Fetch events using `GET /event?featured=true&status=published`.
+- Fetch nearest upcoming gathering using `GET /event/nearest-upcoming` (or `GET /event/upcoming/nearest`).
+  - Automatically fetches the single closest published event occurring today or in the nearest upcoming future.
+  - Can also filter specifically by category/type if desired (e.g. `?category=gala` or `?featured=true`).
+  - Alternatively, fetch general featured events using `GET /event?featured=true&status=published`.
 - Display a cinematic, dark luxury banner with obsidian black background, gold typography, and countdown timer (`Days : Hours : Mins : Secs`) until event start.
 - Highlights: Event Category, Title, Date & Time, Venue / Format badge.
 - Primary CTA: "Reserve Seat" / "Get Tickets" (scrolls to booking card or opens modal).
@@ -329,6 +332,56 @@ PART 3: COMPLETE BACKEND API REFERENCE & CONTRACTS
     "totalReservedSeats": 480,
     "totalCapacity": 1200,
     "totalEstimatedRevenue": 72000
+  }
+}
+```
+
+#### D. Get Nearest Upcoming Event (Today or Upcoming - Public)
+- **Method & Route**: `GET /event/nearest-upcoming` (or `GET /event/upcoming/nearest`)
+- **Auth**: Public (No authentication required)
+- **Query Parameters (Optional)**:
+  - `category`: Filter by category (e.g. `gala`, `fundraiser`, `pitch-night`, `workshop`)
+  - `type`: Filter by format (`physical`, `virtual`, `hybrid`)
+  - `featured`: Filter by featured flag (`true` | `false`)
+- **Description**: Returns the single closest published event occurring today or in the nearest upcoming future. Ideal for Hero countdown banners and homepage highlights.
+- **Success Response (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Nearest upcoming event retrieved successfully",
+  "data": {
+    "_id": "6aab78cee38fea620dc54375",
+    "title": "Annual Hope Gala 2026",
+    "description": "An evening of impact and connection...",
+    "category": "gala",
+    "type": "physical",
+    "pricingType": "paid",
+    "price": 150,
+    "capacity": 250,
+    "reservedCount": 14,
+    "remainingSeats": 236,
+    "startDate": "2026-09-17T18:00:00.000Z",
+    "endDate": "2026-09-17T23:00:00.000Z",
+    "location": "The Park Hotel",
+    "venueAddress": "8348 Fairfield Avenue, Port Haron, MI",
+    "dressCode": "Formal Attire / Black Tie",
+    "featured": true,
+    "image": "https://images.unsplash.com/photo-1511578314322-379afb476865",
+    "status": "published",
+    "speakers": [
+      {
+        "name": "Jean-Pierre Dupont",
+        "role": "Keynote Speaker",
+        "avatar": "https://res.cloudinary.com/..."
+      }
+    ],
+    "createdBy": {
+      "_id": "67375a31b4e019f3...",
+      "name": "Admin User",
+      "email": "admin@ifundayiti.com",
+      "role": "admin"
+    }
   }
 }
 ```
