@@ -7,6 +7,8 @@ import QueryBuilder from '../../../builder/QueryBuilder';
 import config from '../../../../config';
 import ApiError from '../../../../errors/ApiError';
 import { ProgramFund } from '../programFund/programFund.model';
+import { JwtPayload } from 'jsonwebtoken';
+import { USER_ROLES } from '../../../../enums/user';
 
 const createDonationToDB = async (payload: IDonation) => {
   const { name, email, amount } = payload;
@@ -41,9 +43,18 @@ const createDonationToDB = async (payload: IDonation) => {
   return { paymentUrl: session.url };
 };
 
-const getAllDonationsFromDB = async (query: Record<string, any>) => {
+const getAllDonationsFromDB = async (
+  user: JwtPayload,
+  query: Record<string, any>,
+) => {
+  const initQuery = [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(
+    user.role,
+  )
+    ? {}
+    : { email: user.email, payment_status: 'paid' };
+
   const qb = new QueryBuilder(
-    Donation.find().populate({
+    Donation.find(initQuery).populate({
       path: 'applicant',
       select: 'personal applicationPeriod awardedAmount status projectTitle',
       populate: {

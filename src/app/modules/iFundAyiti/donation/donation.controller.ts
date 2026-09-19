@@ -15,7 +15,10 @@ const createDonation = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getAllDonations = catchAsync(async (req: Request, res: Response) => {
-  const result = await DonationServices.getAllDonationsFromDB(req.query);
+  const result = await DonationServices.getAllDonationsFromDB(
+    req.user,
+    req.query,
+  );
   return sendResponse(res, {
     success: true,
     statusCode: StatusCodes.OK,
