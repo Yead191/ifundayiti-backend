@@ -23,7 +23,8 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
     const isDonation =
       metadata?.paymentType === 'ifundayiti_donation' ||
       metadata?.paymentType === 'donation' ||
-      (metadata?.project === 'ifundayiti' && (metadata?.amount || data?.amount_total));
+      (metadata?.project === 'ifundayiti' &&
+        (metadata?.amount || data?.amount_total));
 
     if (isDonation) {
       const name =
@@ -45,6 +46,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
               email,
               amount,
               type: 'donation',
+              payment_status: 'paid',
               transactionId: data.id,
             },
           ],

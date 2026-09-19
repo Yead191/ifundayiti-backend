@@ -1,8 +1,11 @@
+import { JwtPayload } from 'jsonwebtoken';
 import { Application } from '../iFundAyiti/application/application.model';
 import { Applicationperiod } from '../iFundAyiti/applicationperiod/applicationperiod.model';
 import { Donation } from '../iFundAyiti/donation/donation.model';
 import { PROJECT_STATUS } from '../project/project.constants';
 import { Project } from '../project/project.model';
+import { Order } from '../order/order.model';
+import { Types } from 'mongoose';
 
 const getDashboardOverview = async () => {
   const [
@@ -75,7 +78,37 @@ const getImpactStatsFromDB = async () => {
     grantCycleCount,
   };
 };
+
+const getMyStatsFromDB = async (user: JwtPayload) => {
+  const [myOrders, myTotalDonation] = await Promise.all([
+    Order.countDocuments({ user: user.id, payment_status: 'paid' }),
+    Donation.aggregate([
+      {
+        $match: {
+          email: user.email,
+          payment_status: 'paid',
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          myTotalDonation: {
+            $sum: '$amount',
+          },
+        },
+      },
+    ]),
+  ]);
+
+  const myTotalDonationValue = myTotalDonation[0]?.myTotalDonation ?? 0;
+
+  return {
+    myOrders,
+    myTotalDonation: myTotalDonationValue,
+  };
+};
 export const DashboardOverviewServices = {
   getDashboardOverview,
   getImpactStatsFromDB,
+  getMyStatsFromDB,
 };

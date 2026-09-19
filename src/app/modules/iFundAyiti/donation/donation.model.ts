@@ -19,6 +19,12 @@ const donationSchema = new Schema<IDonation, DonationModel>(
       required: true,
       min: 1,
     },
+    payment_status: {
+      type: String,
+      enum: ['paid', 'unpaid', 'failed', 'cancelled'],
+      default: 'unpaid',
+      required: true,
+    },
     transactionId: {
       type: String,
       trim: true,

@@ -14,4 +14,6 @@ router
 
 router.route('/impact-stats').get(DashboardOverviewController.getImpactStats);
 
+router.route('/my-stats').get(auth(), DashboardOverviewController.getMyStats);
+
 export const DashboardOverviewRoutes = router;

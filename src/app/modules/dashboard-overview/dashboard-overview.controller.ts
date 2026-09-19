@@ -25,7 +25,18 @@ const getImpactStats = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getMyStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await DashboardOverviewServices.getMyStatsFromDB(req.user);
+  sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.OK,
+    message: 'My stats fetched successfully',
+    data: result,
+  });
+});
+
 export const DashboardOverviewController = {
   getDashboardOverview,
   getImpactStats,
+  getMyStats,
 };
