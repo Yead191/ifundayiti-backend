@@ -45,6 +45,7 @@ const updateUserByAdminZodSchema = z.object({
     company: z.string().optional(),
     interest: z.string().optional(),
     rejectionReason: z.string().optional(),
+    phone: z.string().optional(),
   }),
 });
 
@@ -65,4 +66,3 @@ export const UserValidation = {
   updateUserByAdminZodSchema,
   changeStatusZodSchema,
 };
-

@@ -342,9 +342,117 @@ B. BLOG POSTS API ENDPOINTS
    - Access: Admin, SuperAdmin
    - Response: 200 OK (Unlinks physical cover photo from disk and removes database entry)
 
-================================================================================
+--------------------------------------------------------------------------------
+C. BLOG LIKE ENDPOINTS
+--------------------------------------------------------------------------------
+
+1. TOGGLE LIKE ON BLOG
+   - URL: `POST /like/:blogIdOrSlug` (or `POST /blog-like/:blogIdOrSlug`)
+   - Access: Authenticated User (`user`, `vendor`, `admin`, `super_admin`)
+   - Headers: `Authorization: Bearer <token>`
+   - Params: `blogIdOrSlug` (Accepts either MongoDB ObjectId or blog slug!)
+   - Description: If user has not liked the blog, creates a like, increments `totalLikes`, and notifies author. If already liked, removes like and decrements `totalLikes`.
+   - Response (200 OK):
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Successfully toggled like",
+       "data": {
+         "liked": true,
+         "totalLikes": 14
+       }
+     }
+     ```
+
+2. GET ALL LIKES FOR BLOG
+   - URL: `GET /like/:blogIdOrSlug`
+   - Access: Public
+   - Query: `page`, `limit`
+   - Response (200 OK): Paginated list of users who liked this blog with `name`, `email`, `image`, `role`.
+
+3. GET MY LIKED BLOGS
+   - URL: `GET /like/my`
+   - Access: Authenticated User
+   - Headers: `Authorization: Bearer <token>`
+   - Response (200 OK): Paginated list of blogs liked by the logged-in user.
+
+--------------------------------------------------------------------------------
+D. BLOG COMMENT ENDPOINTS
+--------------------------------------------------------------------------------
+
+1. CREATE COMMENT ON BLOG
+   - URL: `POST /comment/:blogIdOrSlug` (or `POST /blog-comment/:blogIdOrSlug`)
+   - Access: Authenticated User (`user`, `vendor`, `admin`, `super_admin`)
+   - Headers: `Authorization: Bearer <token>`, `Content-Type: application/json`
+   - Params: `blogIdOrSlug` (Accepts either MongoDB ObjectId or blog slug!)
+   - Request Body:
+     ```json
+     {
+       "text": "Inspiring initiative! Looking forward to supporting this."
+     }
+     ```
+   - Description: Adds comment to the blog, increments `totalComments`, and notifies the blog author in real time.
+   - Response (200 OK):
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Comment added successfully.",
+       "data": {
+         "_id": "67cb4c5d...",
+         "blog": "67cb2b3c...",
+         "text": "Inspiring initiative! Looking forward to supporting this.",
+         "author": {
+           "_id": "67cb0a...",
+           "name": "Sarah Connor",
+           "image": "/image/avatar-sarah.jpg",
+           "role": "USER"
+         },
+         "createdAt": "2026-09-21T10:30:00.000Z"
+       }
+     }
+     ```
+
+2. GET ALL COMMENTS FOR BLOG
+   - URL: `GET /comment/:blogIdOrSlug` (or `GET /blog-comment/:blogIdOrSlug`)
+   - Access: Public
+   - Query: `page`, `limit`, `sort` (default: `-createdAt`)
+   - Response (200 OK): Paginated list of comments with author profile details.
+
+3. UPDATE COMMENT
+   - URL: `PATCH /comment/:commentId`
+   - Access: Comment Author only
+   - Body: `{ "text": "Updated comment content" }`
+   - Response (200 OK): Updated comment object.
+
+4. DELETE COMMENT
+   - URL: `DELETE /comment/:commentId`
+   - Access: Comment Author, Admin, SuperAdmin
+   - Response (200 OK): Deletes comment and decrements `blog.totalComments`.
+
+5. GET MY COMMENTED BLOGS
+   - URL: `GET /comment/my-comments`
+   - Access: Authenticated User
+   - Response (200 OK): Paginated list of blogs where the user has commented.
+
+--------------------------------------------------------------------------------
+E. REAL-TIME SOCKET NOTIFICATIONS
+--------------------------------------------------------------------------------
+1. Blog Publication Broadcast:
+   - When any blog is newly published (`status: "published"`), a notification is dispatched to all active users:
+     - Socket Event: `getNotification::<userId>`
+     - Notification Path: `/blogs/[slug]`
+     - Notification Type: `'blog'`
+2. Blog Engagement Notifications:
+   - When another user likes or comments on an article, the blog author receives an instant socket notification:
+     - Socket Event: `getNotification::<authorId>`
+     - Notification Path: `/blogs/[slug]`
+     - Notification Type: `'like'` or `'comment'`
+
+===============================================================================
 PART 4: TYPESCRIPT DATA MODELS
-================================================================================
+===============================================================================
 
 ```typescript
 export const BLOG_STATUS = {
@@ -384,7 +492,25 @@ export interface IBlog {
   tags?: string[];
   status: BLOG_STATUS;
   isFeatured: boolean;
+  totalLikes: number;
+  totalComments: number;
+  isLikedByMe?: boolean;
   publishedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IBlogComment {
+  _id: string;
+  blog: string;
+  text: string;
+  author: {
+    _id: string;
+    name: string;
+    email: string;
+    image?: string;
+    role: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -397,4 +523,4 @@ export interface IBlogStats {
   featured: number;
 }
 ```
-================================================================================
+====================================================================================

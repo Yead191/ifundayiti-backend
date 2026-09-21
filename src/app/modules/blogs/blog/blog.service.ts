@@ -10,6 +10,21 @@ import ApiError from '../../../../errors/ApiError';
 import { StatusCodes } from 'http-status-codes';
 import { Types } from 'mongoose';
 import unlinkFile from '../../../../shared/unlinkFile';
+import { sendNotificationToAllUsers } from '../../notification/notification.util';
+import { Like } from '../like/like.model';
+
+const dispatchBlogPublishedNotification = (blog: any) => {
+  if (!blog || !blog.title || !blog.slug) return;
+  sendNotificationToAllUsers({
+    title: `New Article: ${blog.title}`,
+    message: `A new article "${blog.title}" has been published on iFundAyiti.`,
+    path: `/blogs/${blog.slug}`,
+    refId: blog._id,
+    type: 'blog',
+  }).catch(err => {
+    console.error('Failed to dispatch blog publication notifications:', err);
+  });
+};
 
 const createBlogToDB = async (payload: IBlog): Promise<IBlog> => {
   try {
@@ -40,6 +55,10 @@ const createBlogToDB = async (payload: IBlog): Promise<IBlog> => {
       { path: 'author', select: 'name email image' },
       { path: 'category', select: 'name slug' },
     ]);
+
+    if (blog.status === BLOG_STATUS.PUBLISHED) {
+      dispatchBlogPublishedNotification(populated || blog);
+    }
 
     return (populated || blog) as IBlog;
   } catch (error: any) {
@@ -136,7 +155,15 @@ const getSingleBlogFromDB = async (idOrSlug: string, user?: JwtPayload) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Blog not found');
   }
 
-  return result;
+  const blogObj: any = result.toObject ? result.toObject() : { ...result };
+  if (user?.id) {
+    const isLiked = await Like.isLikeByMe(user.id, result._id);
+    blogObj.isLikedByMe = isLiked;
+  } else {
+    blogObj.isLikedByMe = false;
+  }
+
+  return blogObj;
 };
 
 const updateBlogToDB = async (id: string, payload: Partial<IBlog>) => {
@@ -226,6 +253,14 @@ const updateBlogToDB = async (id: string, payload: Partial<IBlog>) => {
     },
   ]);
 
+  if (
+    payload.status === BLOG_STATUS.PUBLISHED &&
+    existingBlog.status !== BLOG_STATUS.PUBLISHED &&
+    result
+  ) {
+    dispatchBlogPublishedNotification(result);
+  }
+
   return result;
 };
 
@@ -234,12 +269,14 @@ const updateBlogStatusToDB = async (id: string, status: BLOG_STATUS) => {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid blog ID');
   }
 
+  const existing = await Blog.findById(id);
+  if (!existing) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Blog not found');
+  }
+
   const updateDoc: Record<string, any> = { status };
-  if (status === BLOG_STATUS.PUBLISHED) {
-    const existing = await Blog.findById(id);
-    if (existing && !existing.publishedAt) {
-      updateDoc.publishedAt = new Date();
-    }
+  if (status === BLOG_STATUS.PUBLISHED && !existing.publishedAt) {
+    updateDoc.publishedAt = new Date();
   }
 
   const result = await Blog.findByIdAndUpdate(id, updateDoc, {
@@ -252,6 +289,10 @@ const updateBlogStatusToDB = async (id: string, status: BLOG_STATUS) => {
 
   if (!result) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Blog not found');
+  }
+
+  if (status === BLOG_STATUS.PUBLISHED && existing.status !== BLOG_STATUS.PUBLISHED) {
+    dispatchBlogPublishedNotification(result);
   }
 
   return result;

@@ -54,6 +54,16 @@ const blogSchema = new Schema<IBlog, BlogModel>(
       default: false,
     },
 
+    totalLikes: {
+      type: Number,
+      default: 0,
+    },
+
+    totalComments: {
+      type: Number,
+      default: 0,
+    },
+
     publishedAt: {
       type: Date,
     },

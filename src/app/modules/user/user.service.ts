@@ -86,13 +86,8 @@ const updateProfileToDB = async (
   if (payload.image !== undefined) updateData.image = payload.image;
   if (payload.company !== undefined) updateData.company = payload.company;
   if (payload.interest !== undefined) updateData.interest = payload.interest;
+  if (payload.phone !== undefined) updateData.phone = payload.phone;
 
-  // Vendor Profile
-  if (payload.vendorProfile) {
-    Object.entries(payload.vendorProfile).forEach(([key, value]) => {
-      updateData[`vendorProfile.${key}`] = value;
-    });
-  }
   //unlink file here
   if (payload.image && isExistUser.image !== payload.image) {
     unlinkFile(isExistUser.image!);

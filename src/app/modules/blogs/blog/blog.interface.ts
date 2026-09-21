@@ -15,6 +15,9 @@ export interface IBlog {
   status: BLOG_STATUS;
   isFeatured: boolean;
 
+  totalLikes: number;
+  totalComments: number;
+
   publishedAt?: Date;
 
   createdAt?: Date;

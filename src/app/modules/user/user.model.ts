@@ -36,6 +36,7 @@ const userSchema = new Schema<IUser, UserModal>(
     },
     phone: {
       type: String,
+      default: '',
     },
     status: {
       type: String,

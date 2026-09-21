@@ -30,6 +30,8 @@ import { PartnerRoutes } from '../app/modules/partner/partner.route';
 import { FolderRoutes } from '../app/modules/folder/folder.route';
 import { BlogRoutes } from '../app/modules/blogs/blog/blog.route';
 import { BlogCategoryRoutes } from '../app/modules/blogs/blogcategory/blogcategory.route';
+import { LikeRoutes } from '../app/modules/blogs/like/like.route';
+import { CommentRoutes } from '../app/modules/blogs/comment/comment.route';
 import { EventRoutes } from '../app/modules/event/event.route';
 import { BookingsRoutes } from '../app/modules/bookings/bookings.route';
 const router = express.Router();
@@ -172,6 +174,30 @@ const apiRoutes = [
   {
     path: '/blogcategory',
     route: BlogCategoryRoutes,
+  },
+  {
+    path: '/like',
+    route: LikeRoutes,
+  },
+  {
+    path: '/likes',
+    route: LikeRoutes,
+  },
+  {
+    path: '/blog-like',
+    route: LikeRoutes,
+  },
+  {
+    path: '/comment',
+    route: CommentRoutes,
+  },
+  {
+    path: '/comments',
+    route: CommentRoutes,
+  },
+  {
+    path: '/blog-comment',
+    route: CommentRoutes,
   },
   {
     path: '/event',
