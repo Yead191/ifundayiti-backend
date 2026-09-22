@@ -70,6 +70,9 @@ router.post(
 // Public Ticket View / Print / PDF Download
 router.get('/ticket/:idOrCode', BookingsController.getTicketHtml);
 
+// User Bookings Alias Route
+router.get('/my-bookings', auth(), BookingsController.getAllBookings);
+
 // Main Booking Routes
 router
   .route('/')

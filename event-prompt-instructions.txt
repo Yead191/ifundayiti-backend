@@ -584,5 +584,63 @@ PART 3: COMPLETE BACKEND API REFERENCE & CONTRACTS
 ```
 
 ================================================================================
+PART 4: COPY-PASTE PROMPT FOR WEBSITE USER DASHBOARD (MY BOOKINGS & TICKETS)
+================================================================================
+```markdown
+### TASK: Build "My Event Bookings" & Golden Ticket Pass with QR Code in Website User Dashboard
+
+Implement the "My Event Bookings" module in the Website User Dashboard (`/[lang]/dashboard/my-events` or `/[lang]/dashboard/my-bookings`), allowing logged-in users to view their registered/purchased event tickets, view detailed event information, inspect check-in status, and view/download the scannable luxury golden ticket with QR code.
+
+---
+
+#### 1. USER DASHBOARD NAVIGATION
+- Add "My Events" to the user dashboard sidebar:
+  - Route: `/[lang]/dashboard/my-events`
+  - Icon: Calendar/Ticket (`Ticket` or `CalendarCheck`)
+  - Displays count of active/upcoming bookings.
+
+---
+
+#### 2. BOOKINGS LIST PAGE (`/[lang]/dashboard/my-events`)
+- Fetch user bookings with `GET /api/v1/booking/my-bookings` (or `GET /api/v1/booking` with user Bearer token).
+- **Filter Tabs**: All Bookings | Upcoming Events | Past Events | Cancelled.
+- **Search Bar**: Filter by Event Title or Ticket Code (`IFA-2026-`).
+- **Booking Card / Table Row Details**:
+  - Event Thumbnail, Title, Category Badge (`gala`, `fundraiser`, etc.).
+  - Event Date & Time, Venue Name / City (or "Virtual Webinar").
+  - Ticket Code Monospace Badge (`IFA-2026-XXXXX`) with copy-to-clipboard button.
+  - Admit Quantity (`quantity`), Total Price (`$150.00` or `FREE RSVP`).
+  - Status Pills:
+    - Booking Status: `Confirmed` (emerald), `Attended` (blue), `Cancelled` (red).
+    - Check-in Status: `Awaiting Check-in` (gray) vs `Checked In` (green checkmark).
+  - Quick Action Buttons:
+    - **"View Ticket / QR Code"**: Opens Luxury Golden Ticket Pass modal.
+    - **"Details"**: Opens comprehensive event & attendee drawer/modal.
+    - **"Print / Download"**: Triggers `window.print()` or opens direct print URL: `/api/v1/booking/ticket/:idOrCode`.
+- **Empty State**: Friendly invitation with CTA to browse events (`/events`).
+
+---
+
+#### 3. BOOKING DETAILS VIEW (`/[lang]/dashboard/my-events/[id]` OR MODAL)
+- Fetch single booking via `GET /api/v1/booking/:id` (Bearer token).
+- Displays:
+  - Event Banner, Schedule, Full Venue Address with Google Maps link.
+  - Virtual Stream link (`virtualLink`) if virtual or hybrid event.
+  - Attendee info: Name, Email, Phone, Dietary / Special Note.
+  - Check-in status verification card.
+  - **Embedded High-Contrast QR Code** (rendered from `booking.qrCode` data URL).
+  - Download & Print actions.
+
+---
+
+#### 4. OFFICIAL LUXURY GOLDEN TICKET MODAL (`/[lang]/ticket/[ticketCode]`)
+- Dark obsidian background (`#0E0E10`) with golden borders (`#D4AF37`).
+- Perforated tear-line with circular cutouts.
+- Left Pass: Logo, Event Title, Category, Date/Time, Venue, Attendee Name, Admit Count.
+- Right Stub: Scannable QR Code (`src={booking.qrCode}`), stylized barcode, Ticket Serial Number.
+- Print support via `window.print()` with clean `@media print` CSS rules.
+```
+
+================================================================================
 END OF SPECIFICATION
 ================================================================================

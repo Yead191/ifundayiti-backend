@@ -74,8 +74,6 @@ export const handleEventBooking = async (
       },
     });
 
-
-
     const paymentTxnId =
       (checkoutSession.payment_intent as string) || checkoutSession.id;
     const amountPaid = checkoutSession.amount_total
@@ -123,10 +121,8 @@ export const handleEventBooking = async (
         title: 'Event Ticket Confirmed',
         message: `Your ticket for "${event.title}" is confirmed! Ticket ID: ${ticketCode}`,
         refId: event._id,
-        path: `/event/${event._id}`,
-      }).catch(err =>
-        console.error('[Notification Error - User]:', err),
-      );
+        path: `/dashboard/my-bookings/${event._id}`,
+      }).catch(err => console.error('[Notification Error - User]:', err));
     }
 
     await NotificationServices.sendNotificationToAdmins({

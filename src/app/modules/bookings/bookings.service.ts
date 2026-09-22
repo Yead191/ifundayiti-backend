@@ -486,7 +486,10 @@ const getAllBookings = async (user: JwtPayload, query: Record<string, any>) => {
   const qb = new QueryBuilder(
     Bookings.find(initQuery)
       .populate('user', 'name email image')
-      .populate('event', 'title type category startDate endDate location price')
+      .populate(
+        'event',
+        'title type category startDate endDate location venueAddress price image dressCode',
+      )
       .populate('service', 'title price'),
     query,
   )
@@ -532,6 +535,16 @@ const getBookingById = async (id: string, user: JwtPayload) => {
     booking.customerEmail !== user.email
   ) {
     throw new ApiError(StatusCodes.FORBIDDEN, 'Access denied to this booking');
+  }
+
+  // Ensure QR code is present if ticketCode exists
+  if (!booking.qrCode && booking.ticketCode) {
+    const qrCode = await QRCode.toDataURL(booking.ticketCode, {
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+    booking.qrCode = qrCode;
+    await Bookings.findByIdAndUpdate(booking._id, { qrCode });
   }
 
   return booking;

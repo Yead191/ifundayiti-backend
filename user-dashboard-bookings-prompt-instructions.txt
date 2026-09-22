@@ -1,0 +1,516 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT: USER DASHBOARD EVENT BOOKINGS & TICKET PASS
+(FOR WEBSITE USER DASHBOARD / FRONTEND)
+================================================================================
+
+Target Application:
+  - Website User Dashboard (`ifundayiti-frontend`)
+  - Target Routes:
+    - Bookings List:    `/[lang]/dashboard/my-bookings`
+    - Booking Details:  `/[lang]/dashboard/my-bookings/[id]`
+    - Golden Ticket:    `/[lang]/ticket/[ticketCode]` (or luxury pop-up modal with print support)
+Base API URLs:
+  - Booking API:        `/api/v1/booking`  (e.g., `http://10.10.26.173:5004/api/v1/booking`)
+  - Direct Ticket HTML: `/api/v1/booking/ticket/:idOrCode`
+Official Brand Assets:
+  - Logo URL: `https://res.cloudinary.com/dknmebeee/image/upload/v1789453331/logo-ifundayiti-nav_ea5qml.png`
+
+================================================================================
+COPY-PASTE PROMPT FOR AI ASSISTANT / DEVELOPER
+================================================================================
+
+```markdown
+### TASK: Build "My Event Bookings" & Golden Ticket Pass with QR Code in Website User Dashboard
+
+Implement an elegant, modern "My Event Bookings" module in the Website User Dashboard (`/[lang]/dashboard/my-events` or `/[lang]/dashboard/my-bookings`), allowing logged-in users to view their registered/purchased event tickets, view detailed event information, inspect check-in status, and view/download the scannable luxury golden ticket with QR code.
+
+---
+
+### 1. USER DASHBOARD NAVIGATION & LAYOUT INTEGRATION
+
+1. **Dashboard Sidebar Navigation**:
+   - Add a new navigation item in the user dashboard sidebar:
+     - **Title**: "My Events" (or "My Bookings" / "Mes Événements")
+     - **Icon**: Calendar / Ticket Icon (e.g., Lucide `Ticket`, `CalendarCheck`, or `Sparkles`)
+     - **Route**: `/[lang]/dashboard/my-events`
+     - **Badge (Optional)**: Count of active/upcoming events
+
+---
+
+### 2. "MY EVENT BOOKINGS" LIST PAGE (`/[lang]/dashboard/my-bookings`)
+
+#### A. Header & Filter Bar
+- **Page Title**: "My Event Bookings" with subtitle "Manage your reservations, view event details, and download your entry passes."
+- **Status Tabs**:
+  - **All Bookings**: Shows all confirmed, attended, and upcoming reservations.
+  - **Upcoming**: Events where `event.startDate >= today` and `status !== 'cancelled'`.
+  - **Past Events**: Events where `event.endDate < today` or `status === 'attended'`.
+  - **Cancelled**: Bookings where `status === 'cancelled'`.
+- **Search Bar**: Quick filter by Event Title, Location, or Ticket Code (e.g., `IFA-2026-`).
+
+#### B. Booking Card / Table View (Responsive Grid or List)
+For each booking record returned by `GET /api/v1/booking/my-bookings` (or `GET /api/v1/booking`), render an obsidian-styled card:
+1. **Event Cover Thumbnail**: Rounded image with event category tag overlay (`Gala`, `Fundraiser`, `Workshop`, `Pitch Night`).
+2. **Event Title & Format**:
+   - Title linked to `/events/[event._id]` or booking details modal.
+   - Format badge: `Physical Venue` (location icon) | `Virtual Stream` (video icon) | `Hybrid`.
+3. **Date & Venue**:
+   - Formatted Date & Time (e.g., "Saturday, Apr 26, 2026 • 6:00 PM EST").
+   - Venue Name & City (e.g., "The Park Hotel, Miami" or "Zoom Virtual Meeting").
+4. **Ticket Info & Status**:
+   - **Ticket ID**: Monospace badge (e.g., `IFA-2026-8X7Q3`) with one-click copy button.
+   - **Admit Count**: e.g., "2 Tickets" (`quantity`).
+   - **Amount**: `$300.00` or `FREE RSVP` (green pill).
+   - **Check-in Status**:
+     - Not Checked In: Gray/Blue pill "Awaiting Check-in".
+     - Checked In: Emerald pill "Checked In" with checkmark icon.
+5. **Action Buttons**:
+   - **"View Ticket / QR Code"** (Primary Gold/Navy button): Opens the Luxury Ticket Pass modal displaying the scannable QR Code and barcode.
+   - **"View Details"** (Secondary outline button): Opens the detailed booking drawer/page.
+   - **"Print / Download"**: Triggers `window.print()` or opens the backend ticket printable URL: `/api/v1/booking/ticket/${booking.ticketCode || booking._id}` in a new window.
+
+#### C. Empty State
+- If no bookings found:
+  - Render an illustration / ticket icon.
+  - Text: "You haven't reserved any events yet."
+  - CTA Button: "Browse Upcoming Events" (links to `/events`).
+
+---
+
+### 3. BOOKING DETAILS VIEW (`/[lang]/dashboard/my-bookings/[id]` OR MODAL)
+
+When the user clicks "View Details", fetch full booking details via `GET /api/v1/booking/:id`. Render:
+
+1. **Event Summary Banner**:
+   - Event Title, Cover Image, Category, and Start/End Date.
+   - Location Name, full Venue Address with a "Open in Google Maps" link.
+   - If Virtual or Hybrid: Private Meeting URL (`event.virtualLink`) with a "Join Live Stream" button.
+   - Dress Code notice: e.g. "Dress Code: Formal Attire / Black Tie".
+2. **Attendee Information**:
+   - Ticket Holder Name (`customerName`), Email (`customerEmail`), and Phone (`customerPhone`).
+   - Special Requests / Dietary Notes (`note`).
+   - Registration Date (`createdAt`).
+3. **Payment & Order Summary**:
+   - Payment Status (`Paid`, `Free`, `Pending`).
+   - Unit Price x Quantity = Total Amount (`price`).
+   - If Paid: Stripe Payment / Transaction reference.
+4. **Door Check-In Status Card**:
+   - If `checkedIn === true`:
+     - Green notification banner: "✅ Admitted into event on [Formatted Date & Time] by event door staff."
+   - If `checkedIn === false`:
+     - Blue notification banner: "🎟️ Ready for Entry. Present your Ticket QR Code at the registration desk upon arrival."
+5. **Embedded QR Code Pass Card**:
+   - Centered large, high-contrast QR Code:
+     - Rendered directly using `booking.qrCode` (Base64 data URL returned by API).
+     - Underneath: Monospace Ticket Code `IFA-2026-XXXXX`.
+   - Action buttons:
+     - **"Print Ticket"** (prints current view or opens printable page).
+     - **"Download PNG / Save"** (saves QR code).
+
+---
+
+### 4. OFFICIAL LUXURY GOLDEN TICKET MODAL / STANDALONE PAGE (`/[lang]/ticket/[ticketCode]`)
+
+Can be displayed in a full-screen interactive modal OR at `/ticket/:ticketCode`:
+- **Visual Design**:
+  - Deep obsidian background (`#0E0E10`) with glowing champagne gold borders (`#D4AF37`) and subtle Haiti map silhouette.
+  - **Left Pass Body**:
+    - Official iFundAyiti white/gold logo.
+    - Event Title & Category.
+    - Date, Time, Venue Address, Dress Code.
+    - Attendee Name & Admit Count ("ADMIT: 2 GUESTS").
+    - Total Paid / Free Admission badge.
+  - **Perforated Tear Notch**:
+    - Dashed vertical tear line with semicircular cutouts.
+  - **Right Ticket Stub**:
+    - "ADMISSION PASS" in gold foil aesthetic.
+    - High-resolution Scannable QR Code (`src={booking.qrCode}`).
+    - Stylized Barcode SVG/Font.
+    - Serial Ticket Number (`IFA-2026-XXXXX`).
+- **Interactive Actions**:
+  - **"Print Ticket / Save as PDF"**:
+    - Calls `window.print()`.
+    - Includes `@media print` styles so the ticket prints cleanly on standard letter/A4 paper without headers, footers, or dashboard sidebars.
+  - **"Open Official Web Ticket"**:
+    - Links to backend rendered version: `${BACKEND_URL}/api/v1/booking/ticket/${booking.ticketCode}`.
+
+---
+
+### 5. API CONTRACTS & INTEGRATION GUIDE
+
+#### A. Fetch My Bookings
+- **Endpoint**: `GET /api/v1/booking/my-bookings` (or `GET /api/v1/booking`)
+- **Headers**: `Authorization: Bearer <user_token>`
+- **Query Parameters**:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (optional search across event title or ticket code)
+  - `status`: `confirmed` | `attended` | `cancelled`
+  - `paymentStatus`: `paid` | `free`
+- **Response Format (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Bookings retrieved successfully",
+  "data": [
+    {
+      "_id": "67375b42b4e019f4a1b2c3d4",
+      "ticketCode": "IFA-2026-8X7Q3",
+      "customerName": "Marcelle Alexandre",
+      "customerEmail": "marcelle@example.com",
+      "customerPhone": "+1 (305) 555-0199",
+      "quantity": 2,
+      "price": 300,
+      "status": "confirmed",
+      "paymentStatus": "paid",
+      "checkedIn": false,
+      "checkedInAt": null,
+      "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUg...",
+      "note": "Dietary: Vegetarian",
+      "createdAt": "2026-09-15T12:00:00.000Z",
+      "event": {
+        "_id": "67375a31b4e019f3e5f6a7b8",
+        "title": "Annual Hope Gala 2026",
+        "type": "physical",
+        "category": "gala",
+        "startDate": "2026-04-26T18:00:00.000Z",
+        "endDate": "2026-04-26T23:00:00.000Z",
+        "location": "The Park Hotel",
+        "venueAddress": "8348 Fairfield Avenue, Port Haron, MI",
+        "dressCode": "Formal Attire / Black Tie",
+        "price": 150,
+        "image": "https://images.unsplash.com/photo-1511578314322-379afb476865"
+      }
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPage": 1
+  }
+}
+```
+
+#### B. Fetch Single Booking Details
+- **Endpoint**: `GET /api/v1/booking/:id`
+- **Headers**: `Authorization: Bearer <user_token>`
+- **Response Format (200 OK)**:
+```json
+{
+  "statusCode": 200,
+  "success": true,
+  "message": "Booking details retrieved successfully",
+  "data": {
+    "_id": "67375b42b4e019f4a1b2c3d4",
+    "ticketCode": "IFA-2026-8X7Q3",
+    "customerName": "Marcelle Alexandre",
+    "customerEmail": "marcelle@example.com",
+    "customerPhone": "+1 (305) 555-0199",
+    "quantity": 2,
+    "price": 300,
+    "status": "confirmed",
+    "paymentStatus": "paid",
+    "checkedIn": false,
+    "checkedInAt": null,
+    "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "note": "Dietary: Vegetarian",
+    "createdAt": "2026-09-15T12:00:00.000Z",
+    "event": {
+      "_id": "67375a31b4e019f3e5f6a7b8",
+      "title": "Annual Hope Gala 2026",
+      "description": "An evening of impact, connection, and hope dedicated to building self-sustaining infrastructure in Haiti.",
+      "category": "gala",
+      "type": "physical",
+      "pricingType": "paid",
+      "price": 150,
+      "capacity": 250,
+      "startDate": "2026-04-26T18:00:00.000Z",
+      "endDate": "2026-04-26T23:00:00.000Z",
+      "location": "The Park Hotel",
+      "venueAddress": "8348 Fairfield Avenue, Port Haron, MI",
+      "dressCode": "Formal Attire / Black Tie",
+      "virtualLink": "",
+      "image": "https://images.unsplash.com/photo-1511578314322-379afb476865",
+      "status": "published",
+      "speakers": [
+        {
+          "name": "Jean-Pierre Dupont",
+          "role": "Keynote Speaker",
+          "avatar": "https://images.unsplash.com/photo-1534528741775-53994a69daeb"
+        }
+      ]
+    }
+  }
+}
+```
+
+#### C. Backend Rendered Printable Ticket (Direct URL)
+- **Endpoint**: `GET /api/v1/booking/ticket/:idOrCode`
+- **Auth**: None (Public for ticket holders)
+- **Accepts**: Either booking `_id` OR `ticketCode` (e.g. `IFA-2026-8X7Q3`)
+- **Headers Returned**: `Content-Type: text/html`
+- **Use Case**: Direct link in emails, or fallback print button in dashboard:
+  ```ts
+  const handlePrint = (ticketCodeOrId: string) => {
+    window.open(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/v1/booking/ticket/${ticketCodeOrId}`, '_blank');
+  };
+  ```
+
+---
+
+### 6. TYPESCRIPT INTERFACES
+
+```typescript
+export interface IBookingEvent {
+  _id: string;
+  title: string;
+  description?: string;
+  category: 'fundraiser' | 'pitch-night' | 'workshop' | 'gala';
+  type: 'physical' | 'virtual' | 'hybrid';
+  pricingType?: 'free' | 'paid';
+  price?: number;
+  capacity?: number;
+  startDate: string;
+  endDate: string;
+  location?: string;
+  venueAddress?: string;
+  virtualLink?: string;
+  dressCode?: string;
+  image?: string;
+  speakers?: Array<{
+    name: string;
+    role: string;
+    avatar?: string;
+  }>;
+}
+
+export interface IUserBooking {
+  _id: string;
+  event: IBookingEvent;
+  customerName: string;
+  customerEmail: string;
+  customerPhone?: string;
+  ticketCode?: string;
+  qrCode?: string; // Base64 data URL
+  checkedIn: boolean;
+  checkedInAt?: string | null;
+  quantity: number;
+  price: number;
+  status: 'pending' | 'confirmed' | 'cancelled' | 'attended';
+  paymentStatus: 'pending' | 'paid' | 'free' | 'failed' | 'refunded';
+  note?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface IBookingsResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: IUserBooking[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPage: number;
+  };
+}
+
+export interface IBookingDetailsResponse {
+  statusCode: number;
+  success: boolean;
+  message: string;
+  data: IUserBooking;
+}
+```
+
+---
+
+### 7. REDUX TOOLKIT (RTK QUERY) API SERVICE EXAMPLE
+
+```typescript
+import { baseApi } from '@/redux/api/baseApi';
+import { IBookingsResponse, IBookingDetailsResponse } from '@/types/booking';
+
+export const userBookingsApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getMyBookings: builder.query<
+      IBookingsResponse,
+      { page?: number; limit?: number; status?: string; searchTerm?: string }
+    >({
+      query: (params) => ({
+        url: '/booking/my-bookings',
+        method: 'GET',
+        params,
+      }),
+      providesTags: ['Bookings'],
+    }),
+
+    getBookingDetails: builder.query<IBookingDetailsResponse, string>({
+      query: (id) => ({
+        url: `/booking/${id}`,
+        method: 'GET',
+      }),
+      providesTags: (result, error, id) => [{ type: 'Bookings', id }],
+    }),
+  }),
+});
+
+export const { useGetMyBookingsQuery, useGetBookingDetailsQuery } = userBookingsApi;
+```
+
+---
+
+### 8. LUXURY TICKET PASS MODAL (REACT/TAILWIND COMPONENT TEMPLATE)
+
+```tsx
+import React, { useRef } from 'react';
+import Image from 'next/image';
+import { format } from 'date-fns';
+import { IUserBooking } from '@/types/booking';
+import { Printer, Download, X, Calendar, MapPin, CheckCircle2 } from 'lucide-react';
+
+interface TicketModalProps {
+  booking: IUserBooking;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const LuxuryTicketModal: React.FC<TicketModalProps> = ({ booking, isOpen, onClose }) => {
+  const ticketRef = useRef<HTMLDivElement>(null);
+
+  if (!isOpen) return null;
+
+  const event = booking.event;
+  const startDate = event?.startDate ? new Date(event.startDate) : new Date();
+  const formattedDate = format(startDate, 'EEEE, MMMM d, yyyy');
+  const formattedTime = format(startDate, 'h:mm a');
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto">
+      <div className="relative w-full max-w-3xl">
+        {/* Modal Controls */}
+        <div className="flex justify-end gap-3 mb-3 print:hidden">
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 hover:bg-amber-500 rounded-lg transition"
+          >
+            <Printer className="w-4 h-4" /> Print Ticket
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-white bg-neutral-800 rounded-lg transition"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Ticket Container */}
+        <div
+          ref={ticketRef}
+          className="relative flex flex-col md:flex-row bg-[#0E0E10] text-white border border-[#D4AF37]/40 rounded-2xl overflow-hidden shadow-2xl"
+        >
+          {/* Main Body */}
+          <div className="flex-1 p-6 md:p-8 flex flex-col justify-between border-b md:border-b-0 md:border-r border-dashed border-[#D4AF37]/30">
+            <div>
+              {/* Brand Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="text-xs uppercase tracking-widest text-[#D4AF37]">
+                  Official Invitation Pass
+                </div>
+                <span className="text-xs uppercase px-2.5 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold">
+                  {booking.paymentStatus === 'free' ? 'Complimentary RSVP' : 'General Admission'}
+                </span>
+              </div>
+
+              {/* Event Title */}
+              <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-white mb-2">
+                {event?.title}
+              </h2>
+              <div className="text-xs uppercase tracking-wider text-neutral-400 mb-6">
+                Category: <span className="text-[#D4AF37] font-semibold">{event?.category || 'Special Gathering'}</span>
+              </div>
+
+              {/* Date & Location Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm text-neutral-300 mb-6">
+                <div className="flex items-start gap-2.5">
+                  <Calendar className="w-4 h-4 text-[#D4AF37] mt-0.5" />
+                  <div>
+                    <div className="font-semibold text-white">{formattedDate}</div>
+                    <div className="text-xs text-neutral-400">{formattedTime}</div>
+                  </div>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <MapPin className="w-4 h-4 text-[#D4AF37] mt-0.5" />
+                  <div>
+                    <div className="font-semibold text-white">{event?.location || 'Venue Provided'}</div>
+                    <div className="text-xs text-neutral-400 line-clamp-1">{event?.venueAddress || 'See details'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Attendee Details Bar */}
+            <div className="pt-4 border-t border-neutral-800 flex items-center justify-between text-xs">
+              <div>
+                <div className="text-neutral-500 uppercase tracking-wider">Ticket Holder</div>
+                <div className="font-bold text-white text-sm">{booking.customerName}</div>
+              </div>
+              <div>
+                <div className="text-neutral-500 uppercase tracking-wider">Admit Count</div>
+                <div className="font-bold text-[#D4AF37] text-sm">{booking.quantity} Guest(s)</div>
+              </div>
+              <div>
+                <div className="text-neutral-500 uppercase tracking-wider">Status</div>
+                <div className="font-bold text-emerald-400 capitalize">{booking.status}</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Tear Stub & QR Code */}
+          <div className="w-full md:w-64 bg-[#141418] p-6 flex flex-col items-center justify-center text-center">
+            <div className="text-[10px] uppercase tracking-widest text-neutral-400 mb-2">
+              Scan for Entry
+            </div>
+
+            {/* Base64 Scannable QR Code */}
+            {booking.qrCode ? (
+              <div className="p-2 bg-white rounded-xl shadow-lg mb-3">
+                <img
+                  src={booking.qrCode}
+                  alt={`QR Code for ${booking.ticketCode}`}
+                  className="w-36 h-36 object-contain"
+                />
+              </div>
+            ) : (
+              <div className="w-36 h-36 flex items-center justify-center bg-neutral-900 border border-neutral-700 rounded-xl text-xs text-neutral-500 mb-3">
+                QR Code
+              </div>
+            )}
+
+            {/* Monospace Ticket ID */}
+            <div className="font-mono text-sm font-bold tracking-wider text-[#D4AF37] bg-black/40 px-3 py-1 rounded border border-[#D4AF37]/30">
+              {booking.ticketCode || `IFA-${booking._id.slice(-6).toUpperCase()}`}
+            </div>
+
+            <p className="text-[10px] text-neutral-500 mt-2">
+              Present this pass at the entrance
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+```
+
+================================================================================
+END OF PROMPT
+================================================================================
