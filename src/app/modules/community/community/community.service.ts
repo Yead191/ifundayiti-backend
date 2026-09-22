@@ -14,7 +14,9 @@ import { emailHelper } from '../../../../helpers/emailHelper';
 import { communityPostTemplate } from '../../../../templates/communityPostTemplate';
 import unlinkFile from '../../../../shared/unlinkFile';
 
-// Asynchronous broadcast of branded emails to all active verified members
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Asynchronous broadcast of branded emails to all active members
 const dispatchCommunityEmailBroadcast = async (
   post: any,
   authorName: string,
@@ -22,7 +24,6 @@ const dispatchCommunityEmailBroadcast = async (
   try {
     const users = await User.find({
       status: 'active',
-      verified: true,
       email: { $exists: true, $ne: '' },
     })
       .select('name email')
@@ -41,9 +42,37 @@ const dispatchCommunityEmailBroadcast = async (
         postId: post._id.toString(),
       });
 
-      emailHelper.sendEmail(emailPayload).catch(err => {
-        console.error(`Failed to send community email to ${u.email}:`, err);
-      });
+      let attempts = 0;
+      let sent = false;
+      while (attempts < 3 && !sent) {
+        attempts++;
+        try {
+          await emailHelper.sendEmail(emailPayload);
+          sent = true;
+        } catch (err: any) {
+          const isRateLimit =
+            err?.responseCode === 432 ||
+            err?.message?.includes('432') ||
+            err?.message?.includes('limit exceeded') ||
+            err?.message?.includes('Concurrent');
+
+          if (isRateLimit && attempts < 3) {
+            console.warn(
+              `SMTP rate limit hit for ${u.email}. Retrying in 2s (attempt ${attempts}/3)...`,
+            );
+            await sleep(2000);
+          } else {
+            console.error(
+              `Failed to send community email to ${u.email}:`,
+              err?.message || err,
+            );
+            break;
+          }
+        }
+      }
+
+      // Small pacing delay between emails to avoid bursting SMTP server
+      await sleep(350);
     }
   } catch (error) {
     console.error('Community email broadcast error:', error);

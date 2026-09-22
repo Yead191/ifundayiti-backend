@@ -7,24 +7,31 @@ const transporter = nodemailer.createTransport({
   host: config.email.host,
   port: Number(config.email.port),
   secure: false,
+  pool: true,
+  maxConnections: 1,
+  maxMessages: 100,
+  rateDelta: 1000,
+  rateLimit: 2,
   auth: {
     user: config.email.user,
     pass: config.email.pass,
   },
-});
+} as any);
 
 const sendEmail = async (values: ISendEmail) => {
   try {
     const info = await transporter.sendMail({
-      from: `${config.project_name} ${config.email.from}`,
+      from: `${config.project_name} <${config.email.from}>`,
       to: values.to,
       subject: values.subject,
       html: values.html,
     });
 
     logger.info('Mail send successfully', info.accepted);
+    return { success: true, accepted: info.accepted };
   } catch (error) {
-    errorLogger.error('Email', error);
+    errorLogger.error('Email Message failed:', error);
+    throw error;
   }
 };
 
