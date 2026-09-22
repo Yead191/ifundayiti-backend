@@ -1,0 +1,651 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: COMMUNITY FORUM SYSTEM
+(FOR ADMIN DASHBOARD & PUBLIC / MEMBER COMMUNITY PORTAL)
+================================================================================
+
+Target Applications:
+  1. Admin Dashboard (/admin/community, /admin/community/create, /admin/community/edit/:id)
+  2. Public / Member Website Portal (/community, /community/[id])
+Base API URLs:
+  - Community Posts: `/community` (e.g. `http://localhost:5000/api/v1/community`)
+  - Community Post Likes: `/community-like` or `/community/like` (e.g. `http://localhost:5000/api/v1/community-like`)
+  - Community Comments & Replies: `/community-comment` or `/community/comment` (e.g. `http://localhost:5000/api/v1/community-comment`)
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium Community Forum & Announcement Management in Admin Dashboard
+
+Implement a high-end, editorial-grade Community Forum management module in the Admin Dashboard:
+Routes:
+  - List & Moderation Feed: `/admin/community`
+  - Create Announcement / Thread: `/admin/community/create`
+  - Edit Announcement: `/admin/community/edit/:id`
+
+---
+
+#### 1. OVERVIEW & ACTIONS BAR (`/admin/community`)
+- **Header Actions**:
+  - Search input with debounce (searches in `title` and `content`).
+  - Status filter tabs: `All`, `published`, `draft`, `archived`.
+  - Pinned filter toggle / quick switch: Show only Pinned Announcements.
+  - Primary Action Button: `+ New Forum Announcement` (routes to `/admin/community/create`).
+- **Real-Time Automated Alert**:
+  - Add an informational banner/card at the top:
+    > "📢 **Automatic Broadcast Active**: Publishing a post will automatically send real-time in-app push notifications AND branded email newsletters to all verified community members."
+
+---
+
+#### 2. POSTS MANAGEMENT TABLE / CARDS (`/admin/community`)
+- Render a rich data table or card list with:
+  - **Post Summary & Title**:
+    - Bold title with optional image thumbnail preview.
+    - 2-line preview of content.
+  - **Author**:
+    - Admin avatar, full name, and role badge (`SUPER_ADMIN` / `ADMIN`).
+  - **Engagement Metrics**:
+    - Heart icon + `totalLikes` count.
+    - Speech bubble icon + `totalComments` count (total includes comments + nested replies).
+  - **Badges & Status Controls**:
+    - **Pinned Badge (`isPinned`)**: Star / Pin icon. Toggleable via `PATCH /community/:id` (`{ isPinned: boolean }`) with optimistic UI.
+    - **Locked Badge (`isLocked`)**: Lock icon showing if discussion is open or locked. Toggleable via `PATCH /community/:id` (`{ isLocked: boolean }`).
+    - **Status Tag**:
+      - `published` (Emerald)
+      - `draft` (Amber)
+      - `archived` (Slate)
+  - **Created / Updated Date**:
+    - Relative time formatted (e.g., "2 hours ago", "Sep 22, 2026").
+  - **Action Menu**:
+    - `View Discussion on Website`: Opens `/community/:id` in a new browser tab.
+    - `Edit Post`: Navigates to `/admin/community/edit/:id`.
+    - `Delete Post`: Opens a danger confirmation modal:
+      *"Are you sure you want to delete this forum announcement? All associated member likes, comments, and replies will be permanently deleted."*
+      Calls `DELETE /community/:id`.
+
+---
+
+#### 3. CREATE & EDIT POST FORM (`/admin/community/create` & `/admin/community/edit/:id`)
+- Modern two-column layout (Editorial Canvas on the left, Broadcast Controls on the right sidebar):
+  - **Left Canvas**:
+    - **Title Input (Optional but Recommended)**:
+      - Clean headline input (`placeholder="e.g., Welcome to iFundAyiti Forum & Community Guidelines"`).
+    - **Content Editor (Required)**:
+      - Rich text editor (TipTap, Quill, or Markdown) supporting headings, bullet points, hyperlinks, bold, italics, and quotes.
+    - **Multi-Image Attachment (Optional)**:
+      - Drag-and-drop zone allowing multiple image uploads (`images` array).
+      - Image previews with thumbnail remove buttons.
+  - **Right Sidebar (Settings & Broadcast Preview)**:
+    - **Publishing Status**:
+      - Radio/Select: `published`, `draft`, `archived`.
+    - **Pin to Feed Switch**:
+      - Toggle switch: *"Pin this announcement to top of the forum feed"* (`isPinned: true`).
+    - **Lock Discussion Switch**:
+      - Toggle switch: *"Lock comments (Members can read and like, but cannot comment)"* (`isLocked: true`).
+    - **Broadcast Notice**:
+      - Box showing email & in-app notification dispatch preview before publishing.
+    - **Action Buttons**:
+      - `Save as Draft` (calls `POST /community` with `status: 'draft'`).
+      - `Publish & Broadcast Now` (calls `POST /community` with `status: 'published'`).
+- Supports both `multipart/form-data` (with file uploads under field name `images`) or standard JSON payload (`{ title, content, images, isPinned, isLocked, status }`).
+```
+
+================================================================================
+PART 2: COPY-PASTE PROMPT FOR PUBLIC & MEMBER WEBSITE
+================================================================================
+```markdown
+### TASK: Build Interactive Community Discussion Hub on iFundAyiti Website
+
+Build a state-of-the-art, interactive Community Discussion Hub for iFundAyiti:
+Routes:
+  - Community Feed: `/community`
+  - Single Discussion & Thread: `/community/[id]`
+
+---
+
+#### 1. COMMUNITY FEED PAGE (`/community`)
+- **Hero & Announcement Header**:
+  - Caribbean navy/gold ambient gradient backdrop.
+  - Heading: `"Community Discussions & Official Announcements"`.
+  - Subtitle: `"Stay informed with the latest updates from iFundAyiti leadership, join discussions, and share insights."`.
+  - Search bar with instant debounced filter (`GET /community?searchTerm=...`).
+- **Notice Bar for Non-Admins**:
+  - A subtle, friendly badge: *"Official announcements are published by iFundAyiti administrators. All verified members are invited to comment, reply, and interact!"*
+- **Feed List & Pinned Highlights**:
+  - Posts with `isPinned: true` are pinned at the top with a gold/amber `"📌 Pinned Announcement"` badge.
+  - **Card Layout**:
+    - **Author Row**:
+      - Admin avatar, name, verified admin badge (Blue/Gold checkmark), and relative time ("3 hours ago").
+    - **Title & Text**:
+      - Bold title (links to `/community/[id]`).
+      - Post content with formatted paragraphs or rich text.
+    - **Media Grid**:
+      - If `images` exist, render a clean responsive 1, 2, or 3-column lightbox grid with rounded corners.
+    - **Engagement Bar**:
+      - **Like Button**: Heart icon. Displays `totalLikes`. Active filled red/gold heart if `isLikeByMe === true`. Clicking toggles `POST /community-like/:postId`. If not logged in, redirects to login modal/page with return URL.
+      - **Comment Button**: Speech bubble icon. Displays `totalComments`. Clicking expands inline comment preview or navigates to `/community/[id]`.
+      - **Lock Status**: If `isLocked === true`, show a small padlock badge: *"Comments locked by admin"*.
+      - **Share Button**: Native Web Share API or Copy Link to clipboard with toast message.
+
+---
+
+#### 2. SINGLE COMMUNITY THREAD & NESTED DISCUSSION (`/community/[id]`)
+- **Breadcrumb Navigation**:
+  - `"← Back to Community Feed"`
+- **Full Discussion Post**:
+  - High-res author avatar, full admin title, published timestamp.
+  - Pinned and Locked indicators.
+  - Complete post body with styled rich typography.
+  - Image carousel or grid with zoom lightbox.
+  - Like button with dynamic like counter and instant optimistic toggle.
+
+---
+
+#### 3. COMMENTS & NESTED REPLIES SYSTEM (`/community/[id]`)
+- **Comments Header**:
+  - Shows `"Comments ([totalComments])"`.
+  - If `post.isLocked === true`: Show alert banner: *"Commenting has been closed for this announcement"*, hiding the new comment input box.
+- **Top-Level Comment Box (Logged-In Users)**:
+  - User avatar alongside an auto-expanding textarea:
+    `"Join the discussion or share your feedback..."`
+  - Submit button: `Post Comment` calling `POST /community-comment/:postId` with `{ "text": text }`.
+  - Shows friendly CTA if not logged in: *"Log in or register to join the discussion."*
+- **Top-Level Comment List**:
+  - Fetched via `GET /community-comment/:postId`.
+  - Each comment item displays:
+    - Comment author avatar (`author.image`), author name (`author.name`), role badge (`author.role`), and relative timestamp.
+    - Comment text (`comment.text`).
+    - **Comment Like Action**: Small heart icon with `totalLikes` and active filled state if `isLikeByMe === true` (or `isLiked === true`). Calls `POST /community-comment/:commentId/like`.
+    - **Reply Action**: `Reply` button that opens an inline reply input box below the comment. Submitting calls `POST /community-comment/:commentId/reply` with `{ "text": text }`.
+    - **Replies Expander**: If `comment.totalReplies > 0`, display a button:
+      `"── View [X] replies ▾"` / `"Hide replies ▴"`.
+      Clicking loads replies dynamically via `GET /community-comment/:commentId/replies`.
+    - **Author / Admin Actions**:
+      - If user is the comment author (`author._id === currentUserId`): `Edit` (inline edit calling `PATCH /community-comment/:commentId` with `{ "text": text }`) and `Delete`.
+      - If user is admin (`SUPER_ADMIN` / `ADMIN`): `Delete` (can moderate any inappropriate comment).
+      - Deleting calls `DELETE /community-comment/:commentId` and automatically decrements counts.
+- **Nested Reply Item**:
+  - Indented with a vertical thread line.
+  - Includes reply author info (`reply.author`), timestamp, text (`reply.text`), and independent comment like button calling `POST /community-comment/:commentId/like`.
+```
+
+================================================================================
+PART 3: BACKEND API CHEAT SHEET & DATA CONTRACTS
+================================================================================
+
+--------------------------------------------------------------------------------
+A. COMMUNITY POSTS API ENDPOINTS
+--------------------------------------------------------------------------------
+
+1. CREATE COMMUNITY POST (Admin Only)
+   - Method: `POST`
+   - URL: `/api/v1/community`
+   - Auth: Bearer Token (Role: `SUPER_ADMIN`, `ADMIN`)
+   - Headers:
+     - `Content-Type: multipart/form-data` OR `application/json`
+   - Body (JSON):
+     ```json
+     {
+       "title": "Welcome to the Official iFundAyiti Community Discussion",
+       "content": "We are thrilled to launch the community forum. All members can interact...",
+       "images": [
+         "https://res.cloudinary.com/demo/image/upload/announcement.jpg"
+       ],
+       "isPinned": true,
+       "isLocked": false,
+       "status": "published"
+     }
+     ```
+   - Body (Multipart Form-Data):
+     - `data`: JSON string of `{ "title": "...", "content": "...", "isPinned": true }`
+     - `images`: One or more image files (uploaded automatically to disk/cloud).
+   - Side Effects:
+     - Sends in-app socket notification to ALL users (`path: '/community/:id'`).
+     - Sends branded HTML email notification to all active verified users.
+   - Response: `201 Created`
+     ```json
+     {
+       "statusCode": 201,
+       "success": true,
+       "message": "Community post created and broadcasted successfully",
+       "data": {
+         "_id": "67a3f890ce611ddc22e60531",
+         "title": "Welcome to the Official iFundAyiti Community Forum",
+         "content": "We are thrilled to launch the community forum...",
+         "images": [],
+         "author": {
+           "_id": "679c1234567890abcdef1234",
+           "name": "Administrator",
+           "email": "admin@ifundayiti.com",
+           "image": "https://...",
+           "role": "SUPER_ADMIN"
+         },
+         "isPinned": true,
+         "isLocked": false,
+         "status": "published",
+         "totalLikes": 0,
+         "totalComments": 0,
+         "createdAt": "2026-09-22T03:30:00.000Z",
+         "updatedAt": "2026-09-22T03:30:00.000Z"
+       }
+     }
+     ```
+
+2. GET ALL COMMUNITY POSTS (Public / Member Feed)
+   - Method: `GET`
+   - URL: `/api/v1/community`
+   - Auth: Optional (Send Bearer Token if logged in to get personalized `isLikeByMe`)
+   - Query Parameters:
+     - `searchTerm`: string (searches title & content)
+     - `page`: number (default: 1)
+     - `limit`: number (default: 10)
+     - `isPinned`: boolean (`true` or `false`)
+     - `isLocked`: boolean (`true` or `false`)
+     - `status`: `'published'` | `'draft'` | `'archived'` (admins can filter drafts; defaults to published for public)
+     - `sortBy`: string (default: `isPinned: -1, createdAt: -1`)
+   - Response: `200 OK`
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Forum posts fetched successfully",
+       "pagination": {
+         "page": 1,
+         "limit": 10,
+         "total": 24,
+         "totalPage": 3
+       },
+       "data": [
+         {
+           "_id": "67a3f890ce611ddc22e60531",
+           "title": "Welcome to the Official iFundAyiti Community Discussion",
+           "content": "We are thrilled to launch the community forum...",
+           "images": ["https://..."],
+           "author": {
+             "_id": "679c1234567890abcdef1234",
+             "name": "Administrator",
+             "email": "admin@ifundayiti.com",
+             "image": "https://...",
+             "role": "SUPER_ADMIN"
+           },
+           "isPinned": true,
+           "isLocked": false,
+           "status": "published",
+           "totalLikes": 42,
+           "totalComments": 18,
+           "isLikeByMe": true,
+           "createdAt": "2026-09-22T03:30:00.000Z"
+         }
+       ]
+     }
+     ```
+
+3. GET SINGLE FORUM POST
+   - Method: `GET`
+   - URL: `/api/v1/community/:id`
+   - Auth: Optional (Pass Bearer Token for `isLikeByMe`)
+   - Response: `200 OK`
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Community post retrieved successfully",
+       "data": {
+         "_id": "67a3f890ce611ddc22e60531",
+         "title": "Welcome to the Official iFundAyiti Community Forum",
+         "content": "...",
+         "images": [],
+         "author": {
+           "_id": "679c1234567890abcdef1234",
+           "name": "Administrator",
+           "role": "SUPER_ADMIN"
+         },
+         "isPinned": true,
+         "isLocked": false,
+         "status": "published",
+         "totalLikes": 42,
+         "totalComments": 18,
+         "isLikeByMe": true
+       }
+     }
+     ```
+
+4. UPDATE FORUM POST (Admin Only)
+   - Method: `PATCH`
+   - URL: `/api/v1/community/:id`
+   - Auth: Bearer Token (Admin Only)
+   - Body:
+     ```json
+     {
+       "title": "Updated Title",
+       "content": "Updated announcement text...",
+       "isPinned": false,
+       "isLocked": true,
+       "status": "published"
+     }
+     ```
+
+5. DELETE FORUM POST (Admin Only)
+   - Method: `DELETE`
+   - URL: `/api/v1/community/:id`
+   - Auth: Bearer Token (Admin Only)
+   - Action: Cascades to remove post, all post likes, comments, comment likes, and notifications.
+
+--------------------------------------------------------------------------------
+B. POST LIKES API ENDPOINTS (`/api/v1/community-like`)
+--------------------------------------------------------------------------------
+
+1. TOGGLE LIKE ON A POST
+   - Method: `POST`
+   - URL: `/api/v1/community-like/:postId`
+   - Auth: Bearer Token (Logged-in User)
+   - Response: `200 OK`
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Post liked successfully",
+       "data": {
+         "liked": true,
+         "totalLikes": 43
+       }
+     }
+     ```
+     *(Toggling again returns `message: "Post unliked successfully"`, `"liked": false`, `"totalLikes": 42`)*
+
+2. GET USERS WHO LIKED A POST
+   - Method: `GET`
+   - URL: `/api/v1/community-like/:postId?page=1&limit=20`
+   - Auth: Public
+
+3. GET ALL POSTS LIKED BY LOGGED-IN USER
+   - Method: `GET`
+   - URL: `/api/v1/community-like/my?page=1&limit=10`
+   - Auth: Bearer Token
+
+--------------------------------------------------------------------------------
+C. COMMENTS & NESTED REPLIES API ENDPOINTS (`/api/v1/community-comment`)
+--------------------------------------------------------------------------------
+
+1. POST TOP-LEVEL COMMENT
+   - Method: `POST`
+   - URL: `/api/v1/community-comment/:postId`
+   - Auth: Bearer Token (Logged-in User)
+   - Body:
+     ```json
+     {
+       "text": "This is a great update for the Haitian diaspora community!"
+     }
+     ```
+     *(Note: Backend accepts either `"text"` or `"comment"` in the request body)*
+   - Response: `201 Created`
+     ```json
+     {
+       "statusCode": 201,
+       "success": true,
+       "message": "Comment posted successfully",
+       "data": {
+         "_id": "67a3fa01ce611ddc22e60552",
+         "post": "67a3f890ce611ddc22e60531",
+         "author": {
+           "_id": "679d9876543210fedcba9876",
+           "name": "Jean-Pierre Duval",
+           "email": "jean@example.com",
+           "image": "https://...",
+           "role": "USER"
+         },
+         "text": "This is a great update for the Haitian diaspora community!",
+         "parentComment": null,
+         "totalLikes": 0,
+         "totalReplies": 0,
+         "createdAt": "2026-09-22T03:35:00.000Z",
+         "updatedAt": "2026-09-22T03:35:00.000Z"
+       }
+     }
+     ```
+
+2. REPLY TO AN EXISTING COMMENT
+   - Method: `POST`
+   - URL: `/api/v1/community-comment/:commentId/reply`
+   - Auth: Bearer Token (Logged-in User)
+   - Note: `:commentId` is the `_id` of the parent comment you are replying to!
+   - Body:
+     ```json
+     {
+       "text": "Agreed Jean-Pierre! Transparent funding is exactly what we need."
+     }
+     ```
+   - Side Effects:
+     - Increments `parentComment.totalReplies` by 1.
+     - Increments `post.totalComments` by 1.
+     - Pushes socket & in-app notification to the author of the parent comment.
+   - Response: `201 Created`
+     ```json
+     {
+       "statusCode": 201,
+       "success": true,
+       "message": "Reply posted successfully",
+       "data": {
+         "_id": "67a3fb12ce611ddc22e6055d",
+         "post": "67a3f890ce611ddc22e60531",
+         "author": {
+           "_id": "679c1234567890abcdef1234",
+           "name": "Marie Joseph",
+           "email": "admin@ifundayiti.com",
+           "image": "https://...",
+           "role": "ADMIN"
+         },
+         "text": "Agreed Jean-Pierre! Transparent funding is exactly what we need.",
+         "parentComment": "67a3fa01ce611ddc22e60552",
+         "totalLikes": 0,
+         "totalReplies": 0,
+         "createdAt": "2026-09-22T03:36:00.000Z",
+         "updatedAt": "2026-09-22T03:36:00.000Z"
+       }
+     }
+     ```
+
+3. TOGGLE LIKE ON A COMMENT OR REPLY
+   - Method: `POST`
+   - URL: `/api/v1/community-comment/:commentId/like`
+   - Auth: Bearer Token (Logged-in User)
+   - Response: `200 OK`
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Comment liked successfully",
+       "data": {
+         "liked": true,
+         "totalLikes": 5
+       }
+     }
+     ```
+
+4. GET TOP-LEVEL COMMENTS FOR A POST
+   - Method: `GET`
+   - URL: `/api/v1/community-comment/:postId?page=1&limit=20`
+   - Auth: Optional (Send Bearer Token for personalized `isLikeByMe` / `isLiked`)
+   - Returns: Only root comments (`parentComment: null`), sorted newest first (`createdAt: -1`).
+   - Response: `200 OK`
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Comments fetched successfully",
+       "pagination": {
+         "page": 1,
+         "limit": 20,
+         "total": 12,
+         "totalPage": 1
+       },
+       "data": [
+         {
+           "_id": "67a3fa01ce611ddc22e60552",
+           "post": "67a3f890ce611ddc22e60531",
+           "author": {
+             "_id": "679d9876543210fedcba9876",
+             "name": "Jean-Pierre Duval",
+             "email": "jean@example.com",
+             "image": "https://...",
+             "role": "USER"
+           },
+           "text": "This is a great update for the Haitian diaspora community!",
+           "parentComment": null,
+           "totalLikes": 5,
+           "totalReplies": 2,
+           "isLiked": false,
+           "isLikeByMe": false,
+           "createdAt": "2026-09-22T03:35:00.000Z",
+           "updatedAt": "2026-09-22T03:35:00.000Z"
+         }
+       ]
+     }
+     ```
+
+5. GET NESTED REPLIES FOR A SPECIFIC COMMENT
+   - Method: `GET`
+   - URL: `/api/v1/community-comment/:commentId/replies?page=1&limit=20`
+   - Auth: Optional (Send Bearer Token for `isLikeByMe` / `isLiked`)
+   - Returns: Child replies (`parentComment: commentId`), sorted oldest first (`createdAt: 1`) so conversations read chronologically.
+   - Response: `200 OK`
+     ```json
+     {
+       "statusCode": 200,
+       "success": true,
+       "message": "Replies fetched successfully",
+       "pagination": {
+         "page": 1,
+         "limit": 20,
+         "total": 2,
+         "totalPage": 1
+       },
+       "data": [
+         {
+           "_id": "67a3fb12ce611ddc22e6055d",
+           "post": "67a3f890ce611ddc22e60531",
+           "author": {
+             "_id": "679c1234567890abcdef1234",
+             "name": "Marie Joseph",
+             "email": "admin@ifundayiti.com",
+             "image": "https://...",
+             "role": "ADMIN"
+           },
+           "text": "Agreed Jean-Pierre! Transparent funding is exactly what we need.",
+           "parentComment": "67a3fa01ce611ddc22e60552",
+           "totalLikes": 1,
+           "totalReplies": 0,
+           "isLiked": true,
+           "isLikeByMe": true,
+           "createdAt": "2026-09-22T03:36:00.000Z",
+           "updatedAt": "2026-09-22T03:36:00.000Z"
+         }
+       ]
+     }
+     ```
+
+6. EDIT COMMENT (Author Only)
+   - Method: `PATCH`
+   - URL: `/api/v1/community-comment/:commentId`
+   - Auth: Bearer Token
+   - Body: `{ "text": "Updated comment text" }`
+
+7. DELETE COMMENT (Author or Admin)
+   - Method: `DELETE`
+   - URL: `/api/v1/community-comment/:commentId`
+   - Auth: Bearer Token
+   - Behavior: If deleting a parent comment, all child replies are cascade deleted automatically, and `post.totalComments` is adjusted accordingly.
+
+================================================================================
+PART 4: TYPESCRIPT DEFINITIONS (FOR FRONTEND & DASHBOARD)
+================================================================================
+
+```typescript
+export interface IForumPostAuthor {
+  _id: string;
+  name: string;
+  email?: string;
+  image?: string;
+  role: 'SUPER_ADMIN' | 'ADMIN' | 'USER';
+}
+
+export interface ICommunityPost {
+  _id: string;
+  title?: string;
+  content: string;
+  images?: string[];
+  author: IForumPostAuthor;
+  isPinned: boolean;
+  isLocked: boolean;
+  status: 'published' | 'draft' | 'archived';
+  totalLikes: number;
+  totalComments: number;
+  isLikeByMe?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ICommunityCommentAuthor {
+  _id: string;
+  name: string;
+  email?: string;
+  image?: string;
+  role?: string;
+}
+
+export interface ICommunityComment {
+  _id: string;
+  post: string;
+  author: ICommunityCommentAuthor;
+  text: string;
+  parentComment?: string | null;
+  totalLikes: number;
+  totalReplies: number;
+  isLiked?: boolean;
+  isLikeByMe?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IToggleLikeResponse {
+  liked: boolean;
+  totalLikes: number;
+}
+```
+
+================================================================================
+PART 5: REAL-TIME SOCKET EVENTS
+================================================================================
+
+1. In-App Notification Stream:
+   - Event Name: `getNotification::<userId>`
+   - Broadcast when:
+     - Admin creates a new post (`path: '/community/:postId'`)
+     - Someone comments on your post (`path: '/community/:postId'`)
+     - Someone replies to your comment (`path: '/community/:postId'`)
+   - Frontend Listener Example:
+     ```typescript
+     socket.on(`getNotification::${currentUser._id}`, (notification) => {
+       // Display in-app floating badge / bell toast
+       toast.info(notification.title);
+     });
+     ```
+
+2. Discussion Real-Time Updates (Optional Room Pattern):
+   - When viewing `/community/[id]`, you can listen for live comment updates or refetch `GET /community-comment/:postId`.
+
+================================================================================
+PART 6: KEY DIFFERENCES FROM LEGACY HUBOLOGY IMPLEMENTATION
+================================================================================
+1. **Posting Permission**:
+   - Legacy: Any registered user could post.
+   - Now: ONLY `SUPER_ADMIN` and `ADMIN` can publish posts (`403 Forbidden` for regular users).
+2. **Community Notifications**:
+   - Every published announcement sends simultaneous in-app notifications AND branded emails to all verified members.
+3. **Category Removed**:
+   - Forum no longer uses the rigid `category` filter or `COMMUNITY_CATEGORY` enum.
+4. **Reports & Report Count Removed**:
+   - No `reportCount` or legacy `Report` model. Admins directly curate and moderate discussions from the dashboard.
+5. **Like & Comment Architecture**:
+   - Stored in separate collections: `community_likes`, `community_comments`, and `community_comment_likes`.
+   - Native support for nested comment replies (`parentComment`) and comment likes.

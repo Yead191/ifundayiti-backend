@@ -31,9 +31,12 @@ import { FolderRoutes } from '../app/modules/folder/folder.route';
 import { BlogRoutes } from '../app/modules/blogs/blog/blog.route';
 import { BlogCategoryRoutes } from '../app/modules/blogs/blogcategory/blogcategory.route';
 import { LikeRoutes } from '../app/modules/blogs/like/like.route';
-import { CommentRoutes } from '../app/modules/blogs/comment/comment.route';
 import { EventRoutes } from '../app/modules/event/event.route';
 import { BookingsRoutes } from '../app/modules/bookings/bookings.route';
+import { CommunityRoutes } from '../app/modules/community/community/community.route';
+import { CommunityLikeRoutes } from '../app/modules/community/communityLike/communityLike.route';
+import { CommunityCommentRoutes } from '../app/modules/community/communityComment/communityComment.route';
+import { CommentRoutes } from '../app/modules/blogs/comment/comment.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -210,6 +213,26 @@ const apiRoutes = [
   {
     path: '/bookings',
     route: BookingsRoutes,
+  },
+  {
+    path: '/community',
+    route: CommunityRoutes,
+  },
+  {
+    path: '/community-like',
+    route: CommunityLikeRoutes,
+  },
+  {
+    path: '/community/like',
+    route: CommunityLikeRoutes,
+  },
+  {
+    path: '/community-comment',
+    route: CommunityCommentRoutes,
+  },
+  {
+    path: '/community/comment',
+    route: CommunityCommentRoutes,
   },
 ];
 
