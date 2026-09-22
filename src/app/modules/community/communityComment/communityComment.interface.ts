@@ -7,7 +7,7 @@ export type ICommunityComment = {
   parentComment?: Types.ObjectId | null;
   totalLikes: number;
   totalReplies: number;
-  isLiked?: boolean;
+  isLikedByMe?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

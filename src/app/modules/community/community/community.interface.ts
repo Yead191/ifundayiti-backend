@@ -10,7 +10,7 @@ export type ICommunity = {
   isPinned?: boolean;
   isLocked?: boolean;
   status?: 'published' | 'draft' | 'archived';
-  isLikeByMe?: boolean;
+  isLikedByMe?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 };

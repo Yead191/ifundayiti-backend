@@ -15,7 +15,7 @@ export interface ICommunityPostEmailData {
 
 export const communityPostTemplate = (data: ICommunityPostEmailData) => {
   const logoUrl = getLogoUrl();
-  const discussionUrl = `${config.frontend_url || 'https://ifundayiti.com'}/community/${data.postId}`;
+  const discussionUrl = `${config.frontend_url || 'https://ifundayiti.org'}/en/community/${data.postId}`;
   const displayTitle = data.postTitle || 'New Community Discussion';
 
   // Sanitize and create excerpt for content
@@ -78,7 +78,7 @@ export const communityPostTemplate = (data: ICommunityPostEmailData) => {
               <p style="font-size: 14px; line-height: 1.6; color: #4b5563; margin: 0;">
                 Warm regards,<br />
                 <strong style="color: #0033A0;">The iFundAyiti Team</strong><br />
-                <a href="${config.frontend_url || 'https://ifundayiti.com'}" style="color: #6b7280; font-size: 13px; text-decoration: none;">ifundayiti.com</a>
+                <a href="${config.frontend_url || 'https://ifundayiti.org'}" style="color: #6b7280; font-size: 13px; text-decoration: none;">ifundayiti.org</a>
               </p>
             </td>
           </tr>

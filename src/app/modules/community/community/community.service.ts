@@ -141,7 +141,7 @@ const getAllPostsFromDB = async (
         : false;
       return {
         ...p,
-        isLikeByMe: isLiked,
+        isLikedByMe: isLiked,
       };
     }),
   );
@@ -168,7 +168,7 @@ const getSinglePostFromDB = async (id: string, user?: JwtPayload) => {
 
   return {
     ...post,
-    isLikeByMe: isLiked,
+    isLikedByMe: isLiked,
   };
 };
 

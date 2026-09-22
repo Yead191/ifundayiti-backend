@@ -255,8 +255,7 @@ const getPostCommentsFromDB = async (
         : false;
       return {
         ...c,
-        isLiked,
-        isLikeByMe: isLiked,
+        isLikedByMe: isLiked,
       };
     }),
   );
@@ -301,8 +300,7 @@ const getCommentRepliesFromDB = async (
         : false;
       return {
         ...r,
-        isLiked,
-        isLikeByMe: isLiked,
+        isLikedByMe: isLiked,
       };
     }),
   );

@@ -1,5 +1,6 @@
 import express from 'express';
 import auth from '../../../middlewares/auth';
+import optionalAuth from '../../../middlewares/optionalAuth';
 import validateRequest from '../../../middlewares/validateRequest';
 import { USER_ROLES } from '../../../../enums/user';
 import { CommunityCommentValidations } from './communityComment.validation';
@@ -36,7 +37,11 @@ router.post(
 );
 
 // Get replies for a specific comment
-router.get('/:id/replies', CommunityCommentController.getCommentReplies);
+router.get(
+  '/:id/replies',
+  optionalAuth,
+  CommunityCommentController.getCommentReplies,
+);
 
 // Top-level post comments & comment modification
 router
@@ -55,6 +60,6 @@ router
     auth(...allAuthenticatedRoles),
     CommunityCommentController.deleteComment,
   )
-  .get(CommunityCommentController.getPostComments);
+  .get(optionalAuth, CommunityCommentController.getPostComments);
 
 export const CommunityCommentRoutes = router;

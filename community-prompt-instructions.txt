@@ -122,7 +122,7 @@ Routes:
     - **Media Grid**:
       - If `images` exist, render a clean responsive 1, 2, or 3-column lightbox grid with rounded corners.
     - **Engagement Bar**:
-      - **Like Button**: Heart icon. Displays `totalLikes`. Active filled red/gold heart if `isLikeByMe === true`. Clicking toggles `POST /community-like/:postId`. If not logged in, redirects to login modal/page with return URL.
+      - **Like Button**: Heart icon. Displays `totalLikes`. Active filled red/gold heart if `isLikedByMe === true`. Clicking toggles `POST /community-like/:postId`. If not logged in, redirects to login modal/page with return URL.
       - **Comment Button**: Speech bubble icon. Displays `totalComments`. Clicking expands inline comment preview or navigates to `/community/[id]`.
       - **Lock Status**: If `isLocked === true`, show a small padlock badge: *"Comments locked by admin"*.
       - **Share Button**: Native Web Share API or Copy Link to clipboard with toast message.
@@ -155,7 +155,7 @@ Routes:
   - Each comment item displays:
     - Comment author avatar (`author.image`), author name (`author.name`), role badge (`author.role`), and relative timestamp.
     - Comment text (`comment.text`).
-    - **Comment Like Action**: Small heart icon with `totalLikes` and active filled state if `isLikeByMe === true` (or `isLiked === true`). Calls `POST /community-comment/:commentId/like`.
+    - **Comment Like Action**: Small heart icon with `totalLikes` and active filled state if `isLikedByMe === true`. Calls `POST /community-comment/:commentId/like`.
     - **Reply Action**: `Reply` button that opens an inline reply input box below the comment. Submitting calls `POST /community-comment/:commentId/reply` with `{ "text": text }`.
     - **Replies Expander**: If `comment.totalReplies > 0`, display a button:
       `"── View [X] replies ▾"` / `"Hide replies ▴"`.
@@ -234,7 +234,7 @@ A. COMMUNITY POSTS API ENDPOINTS
 2. GET ALL COMMUNITY POSTS (Public / Member Feed)
    - Method: `GET`
    - URL: `/api/v1/community`
-   - Auth: Optional (Send Bearer Token if logged in to get personalized `isLikeByMe`)
+   - Auth: Optional (Send Bearer Token if logged in to get personalized `isLikedByMe`)
    - Query Parameters:
      - `searchTerm`: string (searches title & content)
      - `page`: number (default: 1)
@@ -273,7 +273,7 @@ A. COMMUNITY POSTS API ENDPOINTS
            "status": "published",
            "totalLikes": 42,
            "totalComments": 18,
-           "isLikeByMe": true,
+           "isLikedByMe": true,
            "createdAt": "2026-09-22T03:30:00.000Z"
          }
        ]
@@ -283,7 +283,7 @@ A. COMMUNITY POSTS API ENDPOINTS
 3. GET SINGLE FORUM POST
    - Method: `GET`
    - URL: `/api/v1/community/:id`
-   - Auth: Optional (Pass Bearer Token for `isLikeByMe`)
+   - Auth: Optional (Pass Bearer Token for `isLikedByMe`)
    - Response: `200 OK`
      ```json
      {
@@ -305,7 +305,7 @@ A. COMMUNITY POSTS API ENDPOINTS
          "status": "published",
          "totalLikes": 42,
          "totalComments": 18,
-         "isLikeByMe": true
+         "isLikedByMe": true
        }
      }
      ```
@@ -465,7 +465,7 @@ C. COMMENTS & NESTED REPLIES API ENDPOINTS (`/api/v1/community-comment`)
 4. GET TOP-LEVEL COMMENTS FOR A POST
    - Method: `GET`
    - URL: `/api/v1/community-comment/:postId?page=1&limit=20`
-   - Auth: Optional (Send Bearer Token for personalized `isLikeByMe` / `isLiked`)
+   - Auth: Optional (Send Bearer Token for personalized `isLikedByMe`)
    - Returns: Only root comments (`parentComment: null`), sorted newest first (`createdAt: -1`).
    - Response: `200 OK`
      ```json
@@ -494,8 +494,7 @@ C. COMMENTS & NESTED REPLIES API ENDPOINTS (`/api/v1/community-comment`)
            "parentComment": null,
            "totalLikes": 5,
            "totalReplies": 2,
-           "isLiked": false,
-           "isLikeByMe": false,
+           "isLikedByMe": false,
            "createdAt": "2026-09-22T03:35:00.000Z",
            "updatedAt": "2026-09-22T03:35:00.000Z"
          }
@@ -506,7 +505,7 @@ C. COMMENTS & NESTED REPLIES API ENDPOINTS (`/api/v1/community-comment`)
 5. GET NESTED REPLIES FOR A SPECIFIC COMMENT
    - Method: `GET`
    - URL: `/api/v1/community-comment/:commentId/replies?page=1&limit=20`
-   - Auth: Optional (Send Bearer Token for `isLikeByMe` / `isLiked`)
+   - Auth: Optional (Send Bearer Token for `isLikedByMe`)
    - Returns: Child replies (`parentComment: commentId`), sorted oldest first (`createdAt: 1`) so conversations read chronologically.
    - Response: `200 OK`
      ```json
@@ -535,8 +534,7 @@ C. COMMENTS & NESTED REPLIES API ENDPOINTS (`/api/v1/community-comment`)
            "parentComment": "67a3fa01ce611ddc22e60552",
            "totalLikes": 1,
            "totalReplies": 0,
-           "isLiked": true,
-           "isLikeByMe": true,
+           "isLikedByMe": true,
            "createdAt": "2026-09-22T03:36:00.000Z",
            "updatedAt": "2026-09-22T03:36:00.000Z"
          }
@@ -580,7 +578,7 @@ export interface ICommunityPost {
   status: 'published' | 'draft' | 'archived';
   totalLikes: number;
   totalComments: number;
-  isLikeByMe?: boolean;
+  isLikedByMe?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -601,8 +599,7 @@ export interface ICommunityComment {
   parentComment?: string | null;
   totalLikes: number;
   totalReplies: number;
-  isLiked?: boolean;
-  isLikeByMe?: boolean;
+  isLikedByMe?: boolean;
   createdAt: string;
   updatedAt: string;
 }
