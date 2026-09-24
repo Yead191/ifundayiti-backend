@@ -8,6 +8,7 @@ const createEventBookingZod = z.object({
       .number({ invalid_type_error: 'Quantity must be a number' })
       .int()
       .min(1, 'Quantity must be at least 1')
+      .max(5, 'You can book up to 5 seats for an event')
       .default(1),
     note: z.string().optional(),
   }),
@@ -38,7 +39,12 @@ const createBookingZod = z.object({
     customerPhone: z.string().optional(),
     preferredDate: z.string().optional(),
     preferredTime: z.string().optional(),
-    quantity: z.number().optional(),
+    quantity: z
+      .number({ invalid_type_error: 'Quantity must be a number' })
+      .int()
+      .min(1, 'Quantity must be at least 1')
+      .max(5, 'You can book up to 5 seats for an event')
+      .optional(),
   }),
 });
 

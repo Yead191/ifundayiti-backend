@@ -121,7 +121,8 @@ export const handleEventBooking = async (
         title: 'Event Ticket Confirmed',
         message: `Your ticket for "${event.title}" is confirmed! Ticket ID: ${ticketCode}`,
         refId: event._id,
-        path: `/dashboard/my-bookings/${event._id}`,
+        // path: `/dashboard/my-bookings/${event._id}`,
+        path: ticketCode ? `/ticket/${ticketCode}` : `/dashboard/my-bookings`,
       }).catch(err => console.error('[Notification Error - User]:', err));
     }
 

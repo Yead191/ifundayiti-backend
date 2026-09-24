@@ -52,6 +52,47 @@ const bookEventIntoDB = async (
     );
   }
 
+  // Validate maximum 5 seats limit per user for this event
+  if (quantity > 5) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'You can book up to 5 seats for an event',
+    );
+  }
+
+  const userExistingSeats = await Bookings.aggregate([
+    {
+      $match: {
+        event: new mongoose.Types.ObjectId(eventId),
+        user: new mongoose.Types.ObjectId(user.id),
+        status: { $ne: 'cancelled' },
+        paymentStatus: { $in: ['paid', 'free'] },
+      },
+    },
+    {
+      $group: {
+        _id: null,
+        totalBookedSeats: { $sum: { $ifNull: ['$quantity', 1] } },
+      },
+    },
+  ]);
+
+  const existingSeatsCount = userExistingSeats[0]?.totalBookedSeats || 0;
+  if (existingSeatsCount >= 5) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'You have already booked the maximum limit of 5 seats for this event',
+    );
+  }
+
+  if (existingSeatsCount + quantity > 5) {
+    const remainingAllowed = 5 - existingSeatsCount;
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `You can book up to 5 seats for an event. You already have ${existingSeatsCount} seat(s) booked, so you can only book up to ${remainingAllowed} more.`,
+    );
+  }
+
   // Check seat availability
   if (event.capacity && event.capacity > 0) {
     const remainingSeats = Math.max(0, event.capacity - event.reservedCount);
