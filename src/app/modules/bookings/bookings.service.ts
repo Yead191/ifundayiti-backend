@@ -144,7 +144,8 @@ const bookEventIntoDB = async (
         title: 'Event Spot Reserved',
         message: `Your reservation for "${event.title}" is confirmed!`,
         refId: event._id,
-        path: `/event/${event._id}`,
+        // path: `/events/${event._id}`,
+        path: ticketCode ? `/ticket/${ticketCode}` : `/dashboard/my-bookings`,
       }).catch(err => console.error('[Event Notification Error]:', err));
     }
 

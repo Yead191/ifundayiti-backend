@@ -179,7 +179,6 @@ const getEventStatsFromDB = async (query: Record<string, any> = {}) => {
     draftEvents,
     upcomingEvents,
     pastEvents,
-    totalBookings,
     bookingAggregates,
     revenueStats,
   ] = await Promise.all([
@@ -192,20 +191,35 @@ const getEventStatsFromDB = async (query: Record<string, any> = {}) => {
       status: 'published',
     }),
     Event.countDocuments({ ...eventFilter, endDate: { $lt: now } }),
-    // Count all active bookings for event(s)
-    Bookings.countDocuments(bookingFilter),
-    // Aggregate total tickets/seats reserved across active bookings
+    // Aggregate booking counts (paid, free, checked-in) across active bookings
     Bookings.aggregate([
       { $match: bookingFilter },
       {
         $group: {
           _id: null,
-          totalTicketsReserved: { $sum: { $ifNull: ['$quantity', 1] } },
           paidBookings: {
             $sum: { $cond: [{ $eq: ['$paymentStatus', 'paid'] }, 1, 0] },
           },
           freeBookings: {
             $sum: { $cond: [{ $eq: ['$paymentStatus', 'free'] }, 1, 0] },
+          },
+          paidReservedSeats: {
+            $sum: {
+              $cond: [
+                { $eq: ['$paymentStatus', 'paid'] },
+                { $ifNull: ['$quantity', 1] },
+                0,
+              ],
+            },
+          },
+          freeReservedSeats: {
+            $sum: {
+              $cond: [
+                { $eq: ['$paymentStatus', 'free'] },
+                { $ifNull: ['$quantity', 1] },
+                0,
+              ],
+            },
           },
           totalCheckedIn: {
             $sum: { $cond: [{ $eq: ['$checkedIn', true] }, 1, 0] },
@@ -240,7 +254,12 @@ const getEventStatsFromDB = async (query: Record<string, any> = {}) => {
 
   const bAgg = bookingAggregates[0] || {};
   const totalRevenue = revenueStats[0]?.totalRevenue || 0;
-  const totalTickets = bAgg.totalTicketsReserved || totalBookings;
+  const paidBookings = bAgg.paidBookings || 0;
+  const freeBookings = bAgg.freeBookings || 0;
+  const totalBookings = paidBookings + freeBookings;
+  const paidReservedSeats = bAgg.paidReservedSeats || 0;
+  const freeReservedSeats = bAgg.freeReservedSeats || 0;
+  const totalReservedSeats = paidReservedSeats + freeReservedSeats;
   const totalCheckedIn = bAgg.totalCheckedIn || 0;
 
   return {
@@ -250,8 +269,11 @@ const getEventStatsFromDB = async (query: Record<string, any> = {}) => {
     upcomingEvents,
     pastEvents,
     totalBookings,
-    totalTicketsReserved: totalTickets,
-    totalReservedSeats: totalTickets,
+    paidBookings,
+    freeBookings,
+    totalReservedSeats,
+    paidReservedSeats,
+    freeReservedSeats,
     totalRevenue,
     totalCheckedIn,
   };
@@ -304,12 +326,10 @@ const getNearestUpcomingEventFromDB = async (
     filter.featured = query.featured === 'true' || query.featured === true;
   }
 
-  const event = await Event.findOne(filter)
-    .sort({ startDate: 1 })
-    .populate({
-      path: 'createdBy',
-      select: 'name email image role',
-    });
+  const event = await Event.findOne(filter).sort({ startDate: 1 }).populate({
+    path: 'createdBy',
+    select: 'name email image role',
+  });
 
   return event;
 };
@@ -323,4 +343,3 @@ export const EventService = {
   getEventStatsFromDB,
   getNearestUpcomingEventFromDB,
 };
-
