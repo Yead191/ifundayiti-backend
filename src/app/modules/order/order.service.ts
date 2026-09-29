@@ -611,6 +611,385 @@ const deleteOrderFromDB = async (id: string) => {
   return result;
 };
 
+const getOrderStatsFromDB = async (user?: JwtPayload) => {
+  const now = new Date();
+  const startOfToday = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const startOfMonth = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1,
+    0,
+    0,
+    0,
+    0,
+  );
+
+  const matchStage: Record<string, any> = {};
+  if (user && ![USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN].includes(user.role)) {
+    matchStage.user = new mongoose.Types.ObjectId(user.id);
+  }
+
+  const [stats] = await Order.aggregate([
+    { $match: matchStage },
+    {
+      $group: {
+        _id: null,
+        // 1. Order Status Counts
+        totalOrders: { $sum: 1 },
+        pendingOrders: {
+          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.PENDING] }, 1, 0] },
+        },
+        confirmedOrders: {
+          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.CONFIRMED] }, 1, 0] },
+        },
+        processingOrders: {
+          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.PROCESSING] }, 1, 0] },
+        },
+        shippedOrders: {
+          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.SHIPPED] }, 1, 0] },
+        },
+        deliveredOrders: {
+          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.DELIVERED] }, 1, 0] },
+        },
+        cancelledOrders: {
+          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.CANCELLED] }, 1, 0] },
+        },
+
+        // 2. Payment Status Counts
+        paidOrders: {
+          $sum: {
+            $cond: [{ $eq: ['$payment_status', PAYMENT_STATUS.PAID] }, 1, 0],
+          },
+        },
+        pendingPaymentOrders: {
+          $sum: {
+            $cond: [{ $eq: ['$payment_status', PAYMENT_STATUS.PENDING] }, 1, 0],
+          },
+        },
+        failedOrders: {
+          $sum: {
+            $cond: [{ $eq: ['$payment_status', PAYMENT_STATUS.FAILED] }, 1, 0],
+          },
+        },
+        refundedOrders: {
+          $sum: {
+            $cond: [{ $eq: ['$payment_status', PAYMENT_STATUS.REFUNDED] }, 1, 0],
+          },
+        },
+
+        // 3. Time-based Volume
+        todayOrders: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfToday] }, 1, 0],
+          },
+        },
+        thisMonthOrders: {
+          $sum: {
+            $cond: [{ $gte: ['$createdAt', startOfMonth] }, 1, 0],
+          },
+        },
+
+        // 4. Financial Metrics (Computed directly on paid & non-cancelled orders)
+        totalRevenue: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.total_price', 0] },
+              0,
+            ],
+          },
+        },
+        totalSubtotal: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.subtotal', 0] },
+              0,
+            ],
+          },
+        },
+        totalDeliveryCharges: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.delivery_charge', 0] },
+              0,
+            ],
+          },
+        },
+        totalTaxCollected: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.tax', 0] },
+              0,
+            ],
+          },
+        },
+        totalDiscountAmount: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.discount_amount', 0] },
+              0,
+            ],
+          },
+        },
+        totalItemsSold: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$total_items', 0] },
+              0,
+            ],
+          },
+        },
+        todayRevenue: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', startOfToday] },
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.total_price', 0] },
+              0,
+            ],
+          },
+        },
+        thisMonthRevenue: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $gte: ['$createdAt', startOfMonth] },
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              { $ifNull: ['$price_breakdown.total_price', 0] },
+              0,
+            ],
+          },
+        },
+
+        // 5. Pre-Order Metrics (Zero $unwind: streaming $reduce over in-document arrays)
+        totalPreOrderItems: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              {
+                $reduce: {
+                  input: {
+                    $filter: {
+                      input: '$items',
+                      as: 'item',
+                      cond: { $eq: ['$$item.isPreOrder', true] },
+                    },
+                  },
+                  initialValue: 0,
+                  in: { $add: ['$$value', '$$this.quantity'] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+        confirmedPreOrders: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              {
+                $reduce: {
+                  input: {
+                    $filter: {
+                      input: '$items',
+                      as: 'item',
+                      cond: {
+                        $and: [
+                          { $eq: ['$$item.isPreOrder', true] },
+                          {
+                            $eq: [
+                              '$$item.preOrderStatus',
+                              PRE_ORDER_STATUS.CONFIRMED,
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  initialValue: 0,
+                  in: { $add: ['$$value', '$$this.quantity'] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+        readyPreOrders: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              {
+                $reduce: {
+                  input: {
+                    $filter: {
+                      input: '$items',
+                      as: 'item',
+                      cond: {
+                        $and: [
+                          { $eq: ['$$item.isPreOrder', true] },
+                          {
+                            $eq: [
+                              '$$item.preOrderStatus',
+                              PRE_ORDER_STATUS.READY,
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  initialValue: 0,
+                  in: { $add: ['$$value', '$$this.quantity'] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+        completedPreOrders: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              {
+                $reduce: {
+                  input: {
+                    $filter: {
+                      input: '$items',
+                      as: 'item',
+                      cond: {
+                        $and: [
+                          { $eq: ['$$item.isPreOrder', true] },
+                          {
+                            $eq: [
+                              '$$item.preOrderStatus',
+                              PRE_ORDER_STATUS.COMPLETED,
+                            ],
+                          },
+                        ],
+                      },
+                    },
+                  },
+                  initialValue: 0,
+                  in: { $add: ['$$value', '$$this.quantity'] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
+  return {
+    // Total & Fulfillment Statuses
+    totalOrders: stats?.totalOrders || 0,
+    pendingOrders: stats?.pendingOrders || 0,
+    confirmedOrders: stats?.confirmedOrders || 0,
+    processingOrders: stats?.processingOrders || 0,
+    shippedOrders: stats?.shippedOrders || 0,
+    deliveredOrders: stats?.deliveredOrders || 0,
+    cancelledOrders: stats?.cancelledOrders || 0,
+
+    // Payment Statuses
+    paidOrders: stats?.paidOrders || 0,
+    pendingPaymentOrders: stats?.pendingPaymentOrders || 0,
+    failedOrders: stats?.failedOrders || 0,
+    refundedOrders: stats?.refundedOrders || 0,
+
+    // Financial & Revenue
+    totalRevenue: stats?.totalRevenue || 0,
+    totalSubtotal: stats?.totalSubtotal || 0,
+    totalDeliveryCharges: stats?.totalDeliveryCharges || 0,
+    totalTaxCollected: stats?.totalTaxCollected || 0,
+    totalDiscountAmount: stats?.totalDiscountAmount || 0,
+    totalItemsSold: stats?.totalItemsSold || 0,
+    todayRevenue: stats?.todayRevenue || 0,
+    thisMonthRevenue: stats?.thisMonthRevenue || 0,
+
+    // Time-based Order Counts
+    todayOrders: stats?.todayOrders || 0,
+    thisMonthOrders: stats?.thisMonthOrders || 0,
+
+    // Pre-Orders
+    totalPreOrderItems: stats?.totalPreOrderItems || 0,
+    confirmedPreOrders: stats?.confirmedPreOrders || 0,
+    readyPreOrders: stats?.readyPreOrders || 0,
+    completedPreOrders: stats?.completedPreOrders || 0,
+  };
+};
+
 export const OrderServices = {
   createOrderToDB,
   getOrdersFromDB,
@@ -618,4 +997,5 @@ export const OrderServices = {
   changeOrderStatus,
   markPreOrderReadyToDB,
   deleteOrderFromDB,
+  getOrderStatsFromDB,
 };

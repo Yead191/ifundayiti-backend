@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   DONATION_PAYMENT_METHOD,
   DONATION_PAYMENT_STATUS,
+  DONATION_TYPE,
 } from './donation.constants';
 
 const createDonationSchema = z.object({
@@ -17,7 +18,7 @@ const createDonationSchema = z.object({
       .number({ required_error: 'Amount is required' })
       .positive('Amount must be positive'),
     transactionId: z.string().optional(),
-    type: z.enum(['donation', 'grant']).optional(),
+    type: z.nativeEnum(DONATION_TYPE).optional(),
   }),
 });
 
@@ -42,7 +43,10 @@ const createManualDonationSchema = z.object({
       .nativeEnum(DONATION_PAYMENT_STATUS)
       .optional()
       .default(DONATION_PAYMENT_STATUS.PAID),
-    type: z.enum(['donation', 'grant']).optional().default('donation'),
+    type: z
+      .nativeEnum(DONATION_TYPE)
+      .optional()
+      .default(DONATION_TYPE.DONATION),
     reference: z.string().optional(),
     notes: z.string().optional(),
     transactionId: z.string().optional(),

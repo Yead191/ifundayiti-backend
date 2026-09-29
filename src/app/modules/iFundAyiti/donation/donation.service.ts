@@ -12,6 +12,7 @@ import { USER_ROLES } from '../../../../enums/user';
 import {
   DONATION_PAYMENT_METHOD,
   DONATION_PAYMENT_STATUS,
+  DONATION_TYPE,
 } from './donation.constants';
 import { getRandomId } from '../../../../shared/getRandomId';
 import { Transaction } from '../../transaction/transaction.model';
@@ -24,6 +25,7 @@ import { User } from '../../user/user.model';
 import { NotificationServices } from '../../notification/notification.service';
 import { emailTemplate } from '../../../../shared/emailTemplate';
 import { emailHelper } from '../../../../helpers/emailHelper';
+import { OrderServices } from '../../order/order.service';
 
 const createDonationToDB = async (payload: IDonation) => {
   const { name, email, amount } = payload;
@@ -68,7 +70,7 @@ const createManualDonationToDB = async (
     amount,
     payment_method = DONATION_PAYMENT_METHOD.CASH,
     payment_status = DONATION_PAYMENT_STATUS.PAID,
-    type = 'donation',
+    type = DONATION_TYPE.DONATION,
     reference,
     notes,
   } = payload;
@@ -109,7 +111,12 @@ const createManualDonationToDB = async (
 
     // Update ProgramFund balance if payment is confirmed/paid
     if (payment_status === DONATION_PAYMENT_STATUS.PAID) {
-      if (type === 'donation') {
+      if (
+        type === DONATION_TYPE.DONATION ||
+        type === DONATION_TYPE.FUND_RAISING ||
+        (type as string) === 'donation' ||
+        (type as string) === 'fund_raising'
+      ) {
         await ProgramFund.updateOne(
           {},
           {
@@ -117,7 +124,7 @@ const createManualDonationToDB = async (
           },
           { session: mongoSession },
         );
-      } else if (type === 'grant') {
+      } else if (type === DONATION_TYPE.GRANT || (type as string) === 'grant') {
         await ProgramFund.updateOne(
           {},
           {
@@ -279,14 +286,22 @@ const deleteDonationFromDB = async (id: string) => {
     donation.payment_status === DONATION_PAYMENT_STATUS.PAID ||
     (donation.payment_status as string) === 'paid';
   if (isPaid) {
-    if (donation.type === 'donation') {
+    if (
+      donation.type === DONATION_TYPE.DONATION ||
+      donation.type === DONATION_TYPE.FUND_RAISING ||
+      (donation.type as string) === 'donation' ||
+      (donation.type as string) === 'fund_raising'
+    ) {
       await ProgramFund.updateOne(
         {},
         {
           $inc: { amount: -donation.amount },
         },
       );
-    } else if (donation.type === 'grant') {
+    } else if (
+      donation.type === DONATION_TYPE.GRANT ||
+      (donation.type as string) === 'grant'
+    ) {
       await ProgramFund.updateOne(
         {},
         {
@@ -323,9 +338,17 @@ const deleteMultipleDonationsFromDB = async (ids: string[]) => {
       d.payment_status === DONATION_PAYMENT_STATUS.PAID ||
       (d.payment_status as string) === 'paid';
     if (isPaid) {
-      if (d.type === 'donation') {
+      if (
+        d.type === DONATION_TYPE.DONATION ||
+        d.type === DONATION_TYPE.FUND_RAISING ||
+        (d.type as string) === 'donation' ||
+        (d.type as string) === 'fund_raising'
+      ) {
         netFundAdjustment -= d.amount;
-      } else if (d.type === 'grant') {
+      } else if (
+        d.type === DONATION_TYPE.GRANT ||
+        (d.type as string) === 'grant'
+      ) {
         netFundAdjustment += d.amount;
       }
     }
@@ -356,13 +379,22 @@ const updateStatusToDB = async (status: string, res: any) => {
 };
 
 const getFundStatsFromDB = async () => {
-  const [stats, currentFund] = await Promise.all([
+  const [stats, orderStats] = await Promise.all([
     Donation.aggregate([
       {
         $match: {
-          payment_status: {
-            $in: [DONATION_PAYMENT_STATUS.PAID, 'paid'],
-          },
+          $or: [
+            {
+              payment_status: {
+                $in: [DONATION_PAYMENT_STATUS.PAID, 'paid'],
+              },
+            },
+            {
+              type: {
+                $in: [DONATION_TYPE.GRANT, 'grant'],
+              },
+            },
+          ],
         },
       },
       {
@@ -378,6 +410,11 @@ const getFundStatsFromDB = async () => {
               $cond: [{ $eq: ['$type', 'grant'] }, '$amount', 0],
             },
           },
+          totalFundRaised: {
+            $sum: {
+              $cond: [{ $eq: ['$type', 'fund_raising'] }, '$amount', 0],
+            },
+          },
           donationCount: {
             $sum: {
               $cond: [{ $eq: ['$type', 'donation'] }, 1, 0],
@@ -388,26 +425,43 @@ const getFundStatsFromDB = async () => {
               $cond: [{ $eq: ['$type', 'grant'] }, 1, 0],
             },
           },
+          fundRaisedCount: {
+            $sum: {
+              $cond: [{ $eq: ['$type', 'fund_raising'] }, 1, 0],
+            },
+          },
           totalCount: { $sum: 1 },
         },
       },
     ]),
-    ProgramFund.findOne({}).lean(),
+    OrderServices.getOrderStatsFromDB(),
   ]);
 
   const totalDonations = stats[0]?.totalDonations || 0;
   const totalGrants = stats[0]?.totalGrants || 0;
+  const offlineFundRaised = stats[0]?.totalFundRaised || 0;
+  const orderRevenue = orderStats?.totalRevenue || 0;
+  const totalFundRaised = offlineFundRaised + orderRevenue;
+
   const donationCount = stats[0]?.donationCount || 0;
   const grantCount = stats[0]?.grantCount || 0;
-  const totalCount = stats[0]?.totalCount || 0;
+  const offlineFundRaisedCount = stats[0]?.fundRaisedCount || 0;
+  const orderPaidCount = orderStats?.paidOrders || 0;
+  const fundRaisedCount = offlineFundRaisedCount + orderPaidCount;
+
+  const totalCount = donationCount + grantCount + fundRaisedCount;
+
+  const totalInflows = totalDonations + totalFundRaised;
+  const totalBalance = totalInflows - totalGrants;
 
   return {
-    balance: totalDonations - totalGrants,
-    programFundBalance: currentFund?.amount ?? totalDonations - totalGrants,
+    totalBalance,
     totalDonations,
     totalGrants,
+    totalFundRaised,
     donationCount,
     grantCount,
+    fundRaisedCount,
     totalCount,
   };
 };

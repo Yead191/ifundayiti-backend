@@ -255,7 +255,46 @@ export interface IOrder {
   }
 
 --------------------------------------------------------------------------------
-3) GET SINGLE ORDER DETAILS
+3) GET ORDER KPI STATISTICS (ADMIN)
+--------------------------------------------------------------------------------
+- Method & Route: GET /order/stats
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Order statistics retrieved successfully",
+    "data": {
+      "totalOrders": 128,
+      "pendingOrders": 5,
+      "confirmedOrders": 42,
+      "processingOrders": 28,
+      "shippedOrders": 19,
+      "deliveredOrders": 30,
+      "cancelledOrders": 4,
+      "paidOrders": 120,
+      "pendingPaymentOrders": 8,
+      "failedOrders": 0,
+      "refundedOrders": 0,
+      "totalRevenue": 9480.50,
+      "totalSubtotal": 8450.00,
+      "totalDeliveryCharges": 480.00,
+      "totalTaxCollected": 550.50,
+      "totalDiscountAmount": 0,
+      "totalItemsSold": 312,
+      "todayRevenue": 420.00,
+      "thisMonthRevenue": 3450.00,
+      "todayOrders": 6,
+      "thisMonthOrders": 48,
+      "totalPreOrderItems": 15,
+      "confirmedPreOrders": 8,
+      "readyPreOrders": 5,
+      "completedPreOrders": 2
+    }
+  }
+
+--------------------------------------------------------------------------------
+4) GET SINGLE ORDER DETAILS
 --------------------------------------------------------------------------------
 - Method & Route: GET /order/:id
 - Access: Authenticated (Customer can view their own order; Admins can view any order)
@@ -268,7 +307,7 @@ export interface IOrder {
   }
 
 --------------------------------------------------------------------------------
-4) UPDATE ORDER STATUS (ADMIN ONLY)
+5) UPDATE ORDER STATUS (ADMIN ONLY)
 --------------------------------------------------------------------------------
 - Method & Route: PATCH /order/:id
 - Access: ADMIN, SUPER_ADMIN

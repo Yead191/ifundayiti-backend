@@ -79,6 +79,16 @@ const deleteOrder = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const getOrderStats = catchAsync(async (req: Request, res: Response) => {
+  const result = await OrderServices.getOrderStatsFromDB(req.user);
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Order statistics retrieved successfully',
+    data: result,
+  });
+});
+
 export const OrderController = {
   createOrder,
   getAllOrders,
@@ -86,4 +96,5 @@ export const OrderController = {
   changeOrderStatus,
   markPreOrderReady,
   deleteOrder,
+  getOrderStats,
 };

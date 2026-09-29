@@ -20,6 +20,13 @@ router.patch(
   auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
   OrderController.markPreOrderReady,
 );
+
+router.get(
+  '/stats',
+  auth(USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN),
+  OrderController.getOrderStats,
+);
+
 router
   .route('/:id')
   .get(auth(), OrderController.getSingleOrder)

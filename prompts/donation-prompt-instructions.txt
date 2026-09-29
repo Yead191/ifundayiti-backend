@@ -8,23 +8,56 @@ Target Applications:
   2. Public User Website (/donate, /transparency, or /fund)
 Base API URLs:
   - Donations & Fund Transactions: `/donation` (e.g. `http://localhost:5000/api/v1/donation`)
+  - Order Stats (Store E-Commerce): `/order/stats`
+
+================================================================================
+🚨 LATEST CHANGE LOG & PURPOSE (NEW UPDATE)
+================================================================================
+FEATURE: Unified Multi-Source Fundraising (Offline Sales + E-Commerce Store Revenue)
+PURPOSE & RATIONALE:
+  Purchases from the iFundAyiti apparel/merchandise store constitute platform fundraising 
+  alongside philanthropic donations. To give administrators and donors a single, cohesive, 
+  and transparent view of platform health:
+  1. E-Commerce Store Integration in Fund Stats (`GET /donation/fund-stats`):
+     - `totalFundRaised` now automatically sums:
+         (a) Offline manual fundraising records (`type: 'fund_raising'` from Donation DB)
+         (b) PLUS Total revenue from paid store orders (`totalRevenue` from Order DB)
+     - `fundRaisedCount` sums:
+         (a) Offline fundraising transaction count
+         (b) PLUS Number of completed paid store orders (`paidOrders` from Order DB)
+  2. Updated Net Financial Formulas:
+     - `totalInflows = totalDonations + totalFundRaised`
+     - `totalBalance = totalInflows - totalGrants`
+     - `totalCount = donationCount + grantCount + fundRaisedCount`
+  3. Offline Merchandise & Direct Sales (`type: "fund_raising"`):
+     - Added `DONATION_TYPE.FUND_RAISING` ('fund_raising').
+     - Admins can log offline merchandise/ticket sales via `POST /donation/manual`
+       with `type: "fund_raising"`, capturing `payment_method`, `reference`, and `notes`.
+  4. Non-Blocking Concurrent Querying:
+     - `getFundStatsFromDB` runs donation aggregation and store order analytics in
+       parallel via `Promise.all` for sub-100ms response times.
+================================================================================
 
 ================================================================================
 EXECUTIVE SUMMARY: WHAT WAS FIXED & ENHANCED
 ================================================================================
-1. **Deletion Capabilities Added**:
-   - `DELETE /donation/:id` — Safely deletes a single donation or grant transaction record from database history and automatically synchronizes the `ProgramFund` balance.
-   - `DELETE /donation/delete-multiple` — Supports batch selecting rows on the admin dashboard and deleting multiple transaction records simultaneously.
-2. **Detailed Transaction Fetch Added**:
-   - `GET /donation/:id` — Enables admin to open an in-depth Transaction Detail Drawer/Modal with populated applicant information, project title, and grant period.
-3. **Optimized Search & Sorting**:
-   - Added database indexes on `createdAt: -1`, `type: 1`, `email: 1`, and `transactionId: 1`.
-   - Default sorting defaults to newest first (`-createdAt`).
-   - Cleaned up search fields to match actual schema root attributes (`name`, `email`, `transactionId`).
-4. **Enriched Fund Stats (`GET /donation/fund-stats`)**:
-   - Now returns not only `balance`, `totalDonations`, and `totalGrants`, but also `donationCount`, `grantCount`, `totalCount`, and `programFundBalance`.
-5. **Cleaned Up Unused Parameters**:
-   - Removed obsolete hardcoded local IP address (`10.10.26.173`) from controller arguments.
+1. **Multi-Source Fundraising Integration (LATEST)**:
+   - Integrated store order revenues and order counts from `OrderServices.getOrderStatsFromDB()` directly into `GET /donation/fund-stats`.
+   - Added support for `type: "fund_raising"` to track offline sales and merchandise alongside pure donations.
+2. **Manual Offline Donation & Sales Recording**:
+   - `POST /donation/manual` allows admins to record cash, bank transfers, or direct payments.
+   - Records admin identity (`recordedBy`), payment method, receipt reference, and notes.
+   - Automatically synchronizes with platform liquidity (`ProgramFund`).
+3. **Deletion Capabilities**:
+   - `DELETE /donation/:id` — Safely deletes a single donation or grant transaction record and auto-adjusts `ProgramFund` balance.
+   - `DELETE /donation/delete-multiple` — Batch delete multiple records simultaneously from the admin dashboard.
+4. **Detailed Transaction Fetch**:
+   - `GET /donation/:id` — Opens Transaction Detail Drawer with populated applicant info, project title, and grant period.
+5. **Optimized Search & Database Indexes**:
+   - Compound and single-field indexes on `createdAt: -1`, `type: 1`, `email: 1`, `payment_status: 1`, and `transactionId: 1`.
+   - Default sorting newest first (`-createdAt`).
+6. **Enriched Fund Stats (`GET /donation/fund-stats`)**:
+   - Returns comprehensive financial health: `totalBalance`, `totalDonations`, `totalGrants`, `totalFundRaised`, `donationCount`, `grantCount`, `fundRaisedCount`, and `totalCount`.
 
 ================================================================================
 PART 1: COPY-PASTE PROMPT FOR ADMIN DASHBOARD
@@ -38,33 +71,59 @@ Implement a high-end, financial-grade Fund Transactions & Donations Management s
 
 #### 1. FUND OVERVIEW & STATS WIDGETS
 - Fetch fund statistics using `GET /donation/fund-stats`.
-- Render 4 top-tier GlassCard metric widgets with Ant Design icons and subtle border gradients:
+- Render 5 top-tier GlassCard metric widgets with Ant Design icons and subtle border gradients:
   - **Net Available Fund Balance**:
-    - Value: `$balance` (formatted as currency: `$XX,XXX.XX`).
-    - Subtitle: Current liquidity available for disbursement.
+    - Value: `$totalBalance` (formatted as currency: `$XX,XXX.XX`).
+    - Subtitle: `Total Inflows ($totalDonations + $totalFundRaised) minus $totalGrants disbursed`.
     - Icon: `WalletOutlined` (Emerald theme).
   - **Total Donations Received**:
     - Value: `$totalDonations` (formatted as `$XX,XXX.XX`).
-    - Subtitle: `${donationCount} contributions from global donors`.
-    - Icon: `RiseOutlined` (Sky blue / Teal theme).
+    - Subtitle: `${donationCount} philanthropic contributions`.
+    - Icon: `HeartOutlined` (Sky blue theme).
+  - **Total Funds Raised (Store & Offline)**:
+    - Value: `$totalFundRaised` (formatted as `$XX,XXX.XX`).
+    - Subtitle: `${fundRaisedCount} store orders & manual fundraising sales`.
+    - Icon: `ShopOutlined` (Purple theme).
   - **Total Grants Disbursed**:
     - Value: `$totalGrants` (formatted as `$XX,XXX.XX`).
     - Subtitle: `${grantCount} grants awarded to local projects`.
     - Icon: `GiftOutlined` (Amber theme).
   - **Total Transaction Volume**:
     - Value: `${totalCount} records`.
-    - Subtitle: Combined donation inflows and grant outflows.
+    - Subtitle: `Combined donations, grants, and fundraising entries`.
     - Icon: `SwapOutlined` (Indigo theme).
 
 ---
 
-#### 2. TRANSACTIONS DATA TABLE & FILTERS
+#### 2. RECORD MANUAL DONATION / OFFLINE SALE MODAL
+- Triggered by "Record Offline Entry" button in dashboard header.
+- Form fields:
+  - **Entry Type**: Segmented radio selector:
+    - `Donation` (Philanthropic contribution)
+    - `Fund Raising` (Offline merchandise, event ticket, or fundraiser sale)
+  - **Contributor Name**: string (required).
+  - **Email**: string (optional; triggers receipt email if provided).
+  - **Amount ($ USD)**: number (required, > 0).
+  - **Payment Method**: Select dropdown:
+    - Cash (`cash`)
+    - Bank Transfer (`bank_transfer`)
+    - Direct Wire (`direct`)
+    - Stripe Offline (`stripe`)
+    - Other (`other`)
+  - **Reference / Receipt #**: string (optional, e.g. "CASH-GALA-0929").
+  - **Internal Notes**: textarea (optional).
+- On Submit: Calls `POST /donation/manual`.
+
+---
+
+#### 3. TRANSACTIONS DATA TABLE & FILTERS
 - Fetch transactions using `GET /donation` (supports pagination, search, and type filters).
 - **Toolbar & Filter Controls**:
-  - **Search Input**: Real-time debounced search by donor name, email, or Stripe transaction ID.
+  - **Search Input**: Real-time debounced search by name, email, or transaction ID.
   - **Type Tabs / Segmented Control**:
     - `All Transactions`
-    - `Donations Inflow` (filters `?type=donation`)
+    - `Donations` (filters `?type=donation`)
+    - `Fundraising Sales` (filters `?type=fund_raising`)
     - `Grants Outflow` (filters `?type=grant`)
   - **Batch Delete Button** (appears when rows are selected):
     - Shows `Delete Selected (${count})`.
@@ -73,32 +132,41 @@ Implement a high-end, financial-grade Fund Transactions & Donations Management s
 
 - **Table Columns**:
   1. **Transaction ID / Reference**:
-     - Monospace code chip (e.g. `cs_live_...` or `cs_test_...`).
+     - Monospace code chip (e.g. `cs_live_...` or `TXN-MAN-XXXX`).
      - Copy button on hover.
   2. **Type**:
-     - `Donation`: Emerald pill tag (`+ $Amount`, with `ArrowDownLeftOutlined` icon).
-     - `Grant`: Amber pill tag (`- $Amount`, with `ArrowUpRightOutlined` icon).
-  3. **Donor / Recipient**:
-     - If Donation: Donor Name & Email.
+     - `Donation`: Emerald pill tag (`+ $Amount`, `HeartOutlined` icon).
+     - `Fund Raising`: Purple pill tag (`+ $Amount`, `ShopOutlined` icon).
+     - `Grant`: Amber pill tag (`- $Amount`, `GiftOutlined` icon).
+  3. **Payment Method / Status**:
+     - Tag showing `Stripe`, `Cash`, `Bank Transfer`, etc.
+     - Status tag: `Paid` (Green), `Pending` (Yellow).
+  4. **Donor / Contributor / Recipient**:
+     - If Donation / Fund Raising: Contributor Name & Email.
      - If Grant: Admin name or Applicant Project Title (from populated `applicant.personal` and `applicant.projectTitle`).
-  4. **Amount**:
-     - Bold styled currency (`+$50.00` in green for donations, `-$500.00` in amber for grants).
-  5. **Date & Time**:
-     - Formatted creation date (e.g., "Sep 14, 2026 • 11:15 AM").
-  6. **Actions**:
+  5. **Recorded By**:
+     - If manual entry: displays `Admin Name` tag.
+     - If online checkout: displays `Online System` tag.
+  6. **Amount**:
+     - Bold styled currency (`+$50.00` green for donations/fundraising, `-$500.00` amber for grants).
+  7. **Date & Time**:
+     - Formatted creation date (e.g., "Sep 29, 2026 • 11:15 AM").
+  8. **Actions**:
      - **View Details**: Opens Transaction Detail Drawer (`GET /donation/:id`).
      - **Delete**: Prompts warning modal:
-       *"Are you sure you want to delete this donation record? This will purge the record from transaction history and synchronize fund balance calculations."*
+       *"Are you sure you want to delete this record? This will purge the record from transaction history and synchronize fund balance calculations."*
        Calls `DELETE /donation/:id`.
 
 ---
 
-#### 3. TRANSACTION DETAIL DRAWER (`GET /donation/:id`)
+#### 4. TRANSACTION DETAIL DRAWER (`GET /donation/:id`)
 - Slide-out side drawer displaying full receipt / audit details:
-  - Large amount header with status badge.
-  - Stripe Checkout Session ID / Transaction Reference.
-  - Donor Information: Name, Email address, Timestamp.
+  - Large amount header with status and type badge.
+  - Transaction Reference & Payment Method.
+  - Contributor Information: Name, Email address, Timestamp.
+  - If Manual: Name and Role of Admin who recorded the transaction (`recordedBy`).
   - If Grant: Awarded Applicant Name, Project Title, Success Story Quote, and Application Period title.
+  - Notes & Reference numbers.
   - Action buttons: "Print Receipt / PDF", "Delete Record".
 ```
 
@@ -133,7 +201,7 @@ Build a seamless, trustworthy Donation & Transparency experience on the website:
 #### 2. LIVE FUND TRANSPARENCY TICKER
 - Fetch live statistics using `GET /donation/fund-stats`.
 - Display a public trust banner:
-  - *"100% Transparency: $XX,XXX raised across XX contributions, with $XX,XXX directly funded to local Haitian entrepreneurs and students."*
+  - *"100% Transparency: $${totalDonations + totalFundRaised} raised across ${donationCount + fundRaisedCount} contributions & store purchases, with $${totalGrants} directly funded to local Haitian entrepreneurs and students."*
 ```
 
 ================================================================================
@@ -141,11 +209,11 @@ PART 3: BACKEND API CHEAT SHEET & DATA CONTRACTS
 ================================================================================
 
 BASE URL:
-  - http://localhost:5000/api/v1 (or production base URL)
-  - `/donation` (or `/donations`)
+  - `http://localhost:5000/api/v1` (or production base URL)
+  - `/donation`
 
 --------------------------------------------------------------------------------
-1. GET ALL DONATIONS & GRANTS
+1. GET ALL DONATIONS & FUND TRANSACTIONS
 --------------------------------------------------------------------------------
 - Method: GET /donation
 - Access: ADMIN, SUPER_ADMIN
@@ -153,7 +221,7 @@ BASE URL:
   - `page`: number (default: 1)
   - `limit`: number (default: 10)
   - `searchTerm`: string (searches `name`, `email`, `transactionId`)
-  - `type`: "donation" | "grant" (filter by transaction type)
+  - `type`: "donation" | "grant" | "fund_raising" (filter by transaction type)
   - `sort`: string (default: "-createdAt")
 - Response (200 OK):
   ```json
@@ -170,54 +238,62 @@ BASE URL:
         "amount": 100,
         "transactionId": "cs_test_a1b2c3d4e5f6g7h8",
         "type": "donation",
+        "payment_status": "paid",
+        "payment_method": "stripe",
         "createdAt": "2026-09-14T09:30:00.000Z",
         "updatedAt": "2026-09-14T09:30:00.000Z"
       },
       {
         "_id": "67cc2b3c4d5e6f7a8b9c02",
-        "name": "Super Admin",
-        "email": "admin@ifundayiti.org",
-        "amount": 500,
-        "type": "grant",
-        "applicant": {
-          "_id": "67cb9a...",
-          "projectTitle": "Clean Solar Water in Cap-Haïtien",
-          "awardedAmount": 500,
-          "status": "winner",
-          "personal": {
-            "firstName": "Jean",
-            "lastName": "Baptiste"
-          },
-          "applicationPeriod": {
-            "_id": "67ca8b...",
-            "title": "Summer 2026 Community Grants"
-          }
+        "name": "Gala Merchandise Sales",
+        "email": "",
+        "amount": 40,
+        "transactionId": "TXN-MAN-8491",
+        "type": "fund_raising",
+        "payment_status": "paid",
+        "payment_method": "cash",
+        "reference": "GALA-BOOTH-01",
+        "notes": "T-shirt and cap cash sales at diaspora gala.",
+        "recordedBy": {
+          "_id": "67cb1a...",
+          "name": "Super Admin",
+          "email": "admin@ifundayiti.org",
+          "role": "admin"
         },
-        "createdAt": "2026-09-12T14:15:00.000Z"
+        "createdAt": "2026-09-29T11:00:00.000Z"
       }
     ]
   }
   ```
 
 --------------------------------------------------------------------------------
-2. GET FUND STATISTICS
+2. GET FUND STATISTICS (UNIFIED DONATIONS + STORE ORDERS)
 --------------------------------------------------------------------------------
 - Method: GET /donation/fund-stats
 - Access: ADMIN, SUPER_ADMIN
+- Calculation Details:
+  - `totalDonations`: Sum of all paid online and manual donations (`type: 'donation'`).
+  - `totalFundRaised`: Sum of manual fundraising items (`type: 'fund_raising'`) + store orders revenue (`totalRevenue` from Order collection).
+  - `donationCount`: Count of paid donation contributions.
+  - `fundRaisedCount`: Count of manual fundraising entries + count of completed paid store orders (`paidOrders` from Order collection).
+  - `totalGrants`: Total disbursed grants to winners.
+  - `totalBalance`: Net liquidity (`totalDonations + totalFundRaised - totalGrants`).
+  - `totalCount`: `donationCount + grantCount + fundRaisedCount`.
 - Response (200 OK):
   ```json
   {
     "statusCode": 200,
     "success": true,
     "message": "Fund stats fetched successfully",
-    "data": {
-      "balance": 14500,
-      "programFundBalance": 14500,
-      "totalDonations": 24500,
-      "totalGrants": 10000,
-      "donationCount": 84,
-      "grantCount": 12,
-      "totalCount": 96
+   "data": {
+        "totalBalance": 618.7,
+        "totalDonations": 93,
+        "totalGrants": 0,
+        "totalFundRaised": 525.7,
+        "donationCount": 6,
+        "grantCount": 0,
+        "fundRaisedCount": 10,
+        "totalCount": 16
     }
   }
   ```
@@ -227,10 +303,10 @@ BASE URL:
 --------------------------------------------------------------------------------
 - Method: GET /donation/:id
 - Access: ADMIN, SUPER_ADMIN
-- Response (200 OK): Returns populated transaction details including applicant & period info.
+- Response (200 OK): Returns populated transaction details including `applicant`, `recordedBy`, `reference`, and `notes`.
 
 --------------------------------------------------------------------------------
-4. CREATE DONATION (STRIPE CHECKOUT)
+4. CREATE ONLINE DONATION (STRIPE CHECKOUT)
 --------------------------------------------------------------------------------
 - Method: POST /donation
 - Access: Public
@@ -256,57 +332,43 @@ BASE URL:
   ```
 
 --------------------------------------------------------------------------------
-5. RECORD MANUAL/OFFLINE DONATION (ADMIN)
+5. RECORD MANUAL / OFFLINE DONATION OR FUNDRAISING SALE (ADMIN)
 --------------------------------------------------------------------------------
 - Method: POST /donation/manual
 - Access: ADMIN, SUPER_ADMIN
 - Headers: `Authorization: Bearer <TOKEN>`, `Content-Type: application/json`
-- Request Body:
+- Request Body (for Offline Fundraising / Merchandise):
+  ```json
+  {
+    "name": "Walkathon T-Shirt Sales",
+    "email": "supporter@example.com",
+    "amount": 40,
+    "type": "fund_raising",
+    "payment_method": "cash",
+    "reference": "BOOTH-TSHIRT-04",
+    "notes": "Sold 2 iFundAyiti t-shirts at annual walkathon."
+  }
+  ```
+- Request Body (for Direct Cash/Bank Donation):
   ```json
   {
     "name": "Jane Smith",
     "email": "jane@example.com",
     "amount": 250,
-    "payment_method": "cash",
-    "reference": "RECEIPT-#4029",
-    "notes": "Direct cash donation received at gala.",
-    "type": "donation"
+    "type": "donation",
+    "payment_method": "bank_transfer",
+    "reference": "WIRE-#9028",
+    "notes": "Direct bank wire to platform endowment."
   }
   ```
 - Supported `payment_method` values: `"cash"`, `"bank_transfer"`, `"direct"`, `"stripe"`, `"other"`
+- Supported `type` values: `"donation"`, `"fund_raising"`
 - Behavior:
   - Automatically sets `payment_status: "paid"`.
   - Sets `recordedBy` to the authenticated admin's ID.
-  - Automatically updates `ProgramFund` balance.
+  - Automatically increases `ProgramFund` balance.
   - Creates financial `Transaction` record for platform bookkeeping.
   - Sends receipt email to donor if email is provided.
-- Response (201 Created):
-  ```json
-  {
-    "statusCode": 201,
-    "success": true,
-    "message": "Manual donation recorded successfully",
-    "data": {
-      "_id": "67cc3c4d5e6f7a8b9c03",
-      "name": "Jane Smith",
-      "email": "jane@example.com",
-      "amount": 250,
-      "payment_method": "cash",
-      "payment_status": "paid",
-      "transactionId": "TXN-MAN-XXXX",
-      "reference": "RECEIPT-#4029",
-      "notes": "Direct cash donation received at gala.",
-      "type": "donation",
-      "recordedBy": {
-        "_id": "67cb1a...",
-        "name": "Super Admin",
-        "email": "admin@ifundayiti.org",
-        "role": "admin"
-      },
-      "createdAt": "2026-09-29T10:00:00.000Z"
-    }
-  }
-  ```
 
 --------------------------------------------------------------------------------
 6. DELETE SINGLE DONATION RECORD
@@ -324,7 +386,7 @@ BASE URL:
   ```
 
 --------------------------------------------------------------------------------
-6. BATCH DELETE MULTIPLE DONATION RECORDS
+7. BATCH DELETE MULTIPLE DONATION RECORDS
 --------------------------------------------------------------------------------
 - Method: DELETE /donation/delete-multiple
 - Access: ADMIN, SUPER_ADMIN
@@ -355,13 +417,34 @@ PART 4: TYPESCRIPT DATA MODELS
 ================================================================================
 
 ```typescript
+export type DONATION_PAYMENT_METHOD =
+  | 'cash'
+  | 'bank_transfer'
+  | 'direct'
+  | 'stripe'
+  | 'other';
+
+export type DONATION_PAYMENT_STATUS = 'pending' | 'paid' | 'failed' | 'refunded';
+
+export type DONATION_TYPE = 'donation' | 'grant' | 'fund_raising';
+
 export interface IDonation {
   _id: string;
   name: string;
   email: string;
   amount: number;
   transactionId?: string;
-  type: 'donation' | 'grant';
+  type: DONATION_TYPE;
+  payment_status: DONATION_PAYMENT_STATUS;
+  payment_method?: DONATION_PAYMENT_METHOD;
+  reference?: string;
+  notes?: string;
+  recordedBy?: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+  };
   applicant?: {
     _id: string;
     projectTitle?: string;
@@ -387,13 +470,15 @@ export interface IDonation {
 }
 
 export interface IFundStats {
-  balance: number;
-  programFundBalance: number;
+  totalBalance: number;
   totalDonations: number;
   totalGrants: number;
+  totalFundRaised: number; // Combines offline fundraising + paid store order revenues
   donationCount: number;
   grantCount: number;
+  fundRaisedCount: number; // Combines offline fundraising entries + completed paid store orders
   totalCount: number;
 }
 ```
 ================================================================================
+

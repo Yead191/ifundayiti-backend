@@ -15,6 +15,11 @@ import { emailHelper } from '../../../../helpers/emailHelper';
 import { emailTemplate } from '../../../../shared/emailTemplate';
 import { ProgramFund } from '../programFund/programFund.model';
 import { Donation } from '../donation/donation.model';
+import {
+  DONATION_PAYMENT_METHOD,
+  DONATION_PAYMENT_STATUS,
+  DONATION_TYPE,
+} from '../donation/donation.constants';
 import { NotificationServices } from '../../notification/notification.service';
 import { USER_ROLES } from '../../../../enums/user';
 
@@ -332,8 +337,10 @@ const winnerSelection = async (
   const trackFund = await Donation.create({
     name: admin.name || 'Admin',
     email: admin.email,
-    type: 'grant',
+    type: DONATION_TYPE.GRANT,
     amount: payload.awardedAmount,
+    payment_status: DONATION_PAYMENT_STATUS.PAID,
+    payment_method: DONATION_PAYMENT_METHOD.DIRECT,
     applicant: application._id,
   });
 
