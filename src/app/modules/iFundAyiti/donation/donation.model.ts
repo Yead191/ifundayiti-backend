@@ -1,5 +1,9 @@
 import { Schema, model } from 'mongoose';
 import { IDonation, DonationModel } from './donation.interface';
+import {
+  DONATION_PAYMENT_METHOD,
+  DONATION_PAYMENT_STATUS,
+} from './donation.constants';
 
 const donationSchema = new Schema<IDonation, DonationModel>(
   {
@@ -21,11 +25,21 @@ const donationSchema = new Schema<IDonation, DonationModel>(
     },
     payment_status: {
       type: String,
-      enum: ['paid', 'unpaid', 'failed', 'cancelled'],
-      default: 'unpaid',
+      enum: Object.values(DONATION_PAYMENT_STATUS),
+      default: DONATION_PAYMENT_STATUS.UNPAID,
+      required: true,
+    },
+    payment_method: {
+      type: String,
+      enum: Object.values(DONATION_PAYMENT_METHOD),
+      default: DONATION_PAYMENT_METHOD.OTHER,
       required: true,
     },
     transactionId: {
+      type: String,
+      trim: true,
+    },
+    stripeCheckoutSessionId: {
       type: String,
       trim: true,
     },
@@ -38,6 +52,11 @@ const donationSchema = new Schema<IDonation, DonationModel>(
     applicant: {
       type: Schema.Types.ObjectId,
       ref: 'Application',
+    },
+    recordedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: false,
     },
   },
   {

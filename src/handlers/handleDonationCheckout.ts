@@ -13,6 +13,7 @@ import {
   TRANSACTION_STATUS,
   TRANSACTION_TYPE,
 } from '../enums/transaction';
+import { DONATION_PAYMENT_METHOD } from '../app/modules/iFundAyiti/donation/donation.constants';
 
 export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
   const mongoSession = await mongoose.startSession();
@@ -38,6 +39,11 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
         Number(metadata?.amount) ||
         (data?.amount_total ? data.amount_total / 100 : 0);
 
+      const paymentTxnId =
+        (typeof data.payment_intent === 'string'
+          ? data.payment_intent
+          : data.payment_intent?.id) || data.id;
+
       if (amount > 0) {
         const donations = await Donation.create(
           [
@@ -47,7 +53,9 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
               amount,
               type: 'donation',
               payment_status: 'paid',
-              transactionId: data.id,
+              stripeCheckoutSessionId: data.id,
+              transactionId: paymentTxnId,
+              payment_method: DONATION_PAYMENT_METHOD.STRIPE,
             },
           ],
           { session: mongoSession },
@@ -65,11 +73,6 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
         const user = email
           ? await User.findOne({ email }).session(mongoSession)
           : null;
-
-        const paymentTxnId =
-          (typeof data.payment_intent === 'string'
-            ? data.payment_intent
-            : data.payment_intent?.id) || data.id;
 
         // Create transaction record for platform financial tracking
         await Transaction.create(

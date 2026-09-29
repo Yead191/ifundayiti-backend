@@ -155,10 +155,12 @@ const getUserStatsFromDB = async () => {
     roleCounts,
     newThisMonth,
   ] = await Promise.all([
-    User.countDocuments({ role: { $ne: USER_ROLES.SUPER_ADMIN } }),
+    User.countDocuments({
+      role: { $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN] },
+    }),
     User.countDocuments({
       status: 'active',
-      role: { $ne: USER_ROLES.SUPER_ADMIN },
+      role: { $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN] },
     }),
     User.countDocuments({
       status: 'blocked',

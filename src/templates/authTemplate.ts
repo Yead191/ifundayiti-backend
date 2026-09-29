@@ -188,15 +188,6 @@ export const welcomeAccount = (values: IWelcomeAccount) => {
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 24px 0;">
                 Congratulations! Your email has been successfully verified, and your IFundAyiti account is now fully active.
               </p>
-              
-              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
-                <h3 style="margin-top: 0; color: #0033A0; font-size: 16px; font-weight: 600;">What you can do next:</h3>
-                <ul style="color: #4b5563; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
-                  <li>Explore IFundAyiti grant programs and funding opportunities</li>
-                  <li>Complete your profile settings</li>
-                  <li>Submit or browse project applications</li>
-                </ul>
-              </div>
 
               <!-- Haitian flag accent divider -->
               <div style="height: 4px; background: linear-gradient(90deg, #0033A0 50%, #E4002B 50%); border-radius: 2px; margin: 24px 0;"></div>
