@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  DONATION_PAYMENT_METHOD,
+  DONATION_PAYMENT_STATUS,
+} from './donation.constants';
 
 const createDonationSchema = z.object({
   body: z.object({
@@ -17,6 +21,34 @@ const createDonationSchema = z.object({
   }),
 });
 
+const createManualDonationSchema = z.object({
+  body: z.object({
+    name: z
+      .string({ required_error: 'Donor name is required' })
+      .trim()
+      .min(1, 'Donor name cannot be empty'),
+    email: z
+      .string()
+      .email('Invalid email address')
+      .optional()
+      .or(z.literal('')),
+    amount: z
+      .number({ required_error: 'Amount is required' })
+      .positive('Amount must be positive'),
+    payment_method: z.nativeEnum(DONATION_PAYMENT_METHOD, {
+      required_error: 'Payment method is required',
+    }),
+    payment_status: z
+      .nativeEnum(DONATION_PAYMENT_STATUS)
+      .optional()
+      .default(DONATION_PAYMENT_STATUS.PAID),
+    type: z.enum(['donation', 'grant']).optional().default('donation'),
+    reference: z.string().optional(),
+    notes: z.string().optional(),
+    transactionId: z.string().optional(),
+  }),
+});
+
 const deleteMultipleDonationsSchema = z.object({
   body: z.object({
     ids: z
@@ -29,5 +61,6 @@ const deleteMultipleDonationsSchema = z.object({
 
 export const DonationValidations = {
   createDonationSchema,
+  createManualDonationSchema,
   deleteMultipleDonationsSchema,
 };

@@ -14,6 +14,19 @@ const createDonation = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+const createManualDonation = catchAsync(async (req: Request, res: Response) => {
+  const result = await DonationServices.createManualDonationToDB(
+    req.user,
+    req.body,
+  );
+  return sendResponse(res, {
+    success: true,
+    statusCode: StatusCodes.CREATED,
+    message: 'Manual donation recorded successfully',
+    data: result,
+  });
+});
+
 const getAllDonations = catchAsync(async (req: Request, res: Response) => {
   const result = await DonationServices.getAllDonationsFromDB(
     req.user,
@@ -88,6 +101,7 @@ const getFundStats = catchAsync(async (req: Request, res: Response) => {
 
 export const DonationController = {
   createDonation,
+  createManualDonation,
   getAllDonations,
   getSingleDonation,
   deleteDonation,

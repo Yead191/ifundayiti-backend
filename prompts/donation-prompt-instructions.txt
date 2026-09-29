@@ -256,7 +256,60 @@ BASE URL:
   ```
 
 --------------------------------------------------------------------------------
-5. DELETE SINGLE DONATION RECORD
+5. RECORD MANUAL/OFFLINE DONATION (ADMIN)
+--------------------------------------------------------------------------------
+- Method: POST /donation/manual
+- Access: ADMIN, SUPER_ADMIN
+- Headers: `Authorization: Bearer <TOKEN>`, `Content-Type: application/json`
+- Request Body:
+  ```json
+  {
+    "name": "Jane Smith",
+    "email": "jane@example.com",
+    "amount": 250,
+    "payment_method": "cash",
+    "reference": "RECEIPT-#4029",
+    "notes": "Direct cash donation received at gala.",
+    "type": "donation"
+  }
+  ```
+- Supported `payment_method` values: `"cash"`, `"bank_transfer"`, `"direct"`, `"stripe"`, `"other"`
+- Behavior:
+  - Automatically sets `payment_status: "paid"`.
+  - Sets `recordedBy` to the authenticated admin's ID.
+  - Automatically updates `ProgramFund` balance.
+  - Creates financial `Transaction` record for platform bookkeeping.
+  - Sends receipt email to donor if email is provided.
+- Response (201 Created):
+  ```json
+  {
+    "statusCode": 201,
+    "success": true,
+    "message": "Manual donation recorded successfully",
+    "data": {
+      "_id": "67cc3c4d5e6f7a8b9c03",
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "amount": 250,
+      "payment_method": "cash",
+      "payment_status": "paid",
+      "transactionId": "TXN-MAN-XXXX",
+      "reference": "RECEIPT-#4029",
+      "notes": "Direct cash donation received at gala.",
+      "type": "donation",
+      "recordedBy": {
+        "_id": "67cb1a...",
+        "name": "Super Admin",
+        "email": "admin@ifundayiti.org",
+        "role": "admin"
+      },
+      "createdAt": "2026-09-29T10:00:00.000Z"
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+6. DELETE SINGLE DONATION RECORD
 --------------------------------------------------------------------------------
 - Method: DELETE /donation/:id
 - Access: ADMIN, SUPER_ADMIN

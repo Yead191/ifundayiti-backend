@@ -3,6 +3,7 @@ import { IDonation, DonationModel } from './donation.interface';
 import {
   DONATION_PAYMENT_METHOD,
   DONATION_PAYMENT_STATUS,
+  DONATION_TYPE,
 } from './donation.constants';
 
 const donationSchema = new Schema<IDonation, DonationModel>(
@@ -14,7 +15,7 @@ const donationSchema = new Schema<IDonation, DonationModel>(
     },
     email: {
       type: String,
-      required: true,
+      required: false,
       lowercase: true,
       trim: true,
     },
@@ -43,10 +44,18 @@ const donationSchema = new Schema<IDonation, DonationModel>(
       type: String,
       trim: true,
     },
+    reference: {
+      type: String,
+      trim: true,
+    },
+    notes: {
+      type: String,
+      trim: true,
+    },
     type: {
       type: String,
-      enum: ['donation', 'grant'],
-      default: 'donation',
+      enum: Object.values(DONATION_TYPE),
+      default: DONATION_TYPE.DONATION,
       required: true,
     },
     applicant: {
@@ -68,6 +77,9 @@ donationSchema.index({ createdAt: -1 });
 donationSchema.index({ type: 1 });
 donationSchema.index({ email: 1 });
 donationSchema.index({ transactionId: 1 });
+donationSchema.index({ reference: 1 });
+donationSchema.index({ payment_method: 1 });
+donationSchema.index({ recordedBy: 1 });
 
 export const Donation = model<IDonation, DonationModel>(
   'Donation',

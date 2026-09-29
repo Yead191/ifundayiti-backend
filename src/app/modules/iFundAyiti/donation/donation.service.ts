@@ -1,4 +1,4 @@
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import { StatusCodes } from 'http-status-codes';
 import stripe from '../../../../config/stripe';
 import { Donation } from './donation.model';
@@ -9,6 +9,21 @@ import ApiError from '../../../../errors/ApiError';
 import { ProgramFund } from '../programFund/programFund.model';
 import { JwtPayload } from 'jsonwebtoken';
 import { USER_ROLES } from '../../../../enums/user';
+import {
+  DONATION_PAYMENT_METHOD,
+  DONATION_PAYMENT_STATUS,
+} from './donation.constants';
+import { getRandomId } from '../../../../shared/getRandomId';
+import { Transaction } from '../../transaction/transaction.model';
+import {
+  TRANSACTION_CATEGORY,
+  TRANSACTION_STATUS,
+  TRANSACTION_TYPE,
+} from '../../../../enums/transaction';
+import { User } from '../../user/user.model';
+import { NotificationServices } from '../../notification/notification.service';
+import { emailTemplate } from '../../../../shared/emailTemplate';
+import { emailHelper } from '../../../../helpers/emailHelper';
 
 const createDonationToDB = async (payload: IDonation) => {
   const { name, email, amount } = payload;
@@ -35,12 +50,151 @@ const createDonationToDB = async (payload: IDonation) => {
       paymentType: 'ifundayiti_donation',
       project: 'ifundayiti',
       name,
-      email,
+      email: email || '',
       amount: amount.toString(),
     },
   });
 
   return { paymentUrl: session.url };
+};
+
+const createManualDonationToDB = async (
+  user: JwtPayload,
+  payload: Partial<IDonation>,
+) => {
+  const {
+    name,
+    email,
+    amount,
+    payment_method = DONATION_PAYMENT_METHOD.CASH,
+    payment_status = DONATION_PAYMENT_STATUS.PAID,
+    type = 'donation',
+    reference,
+    notes,
+  } = payload;
+
+  if (!amount || amount <= 0) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Valid donation amount is required',
+    );
+  }
+
+  const transactionId =
+    payload.transactionId ||
+    reference ||
+    getRandomId('TXN-MAN-', 4, 'uppercase');
+
+  const mongoSession = await mongoose.startSession();
+  try {
+    mongoSession.startTransaction();
+
+    const [donation] = await Donation.create(
+      [
+        {
+          name,
+          email: email || '',
+          amount,
+          payment_status,
+          payment_method,
+          transactionId,
+          type,
+          reference,
+          notes,
+          recordedBy: new Types.ObjectId(user.id),
+        },
+      ],
+      { session: mongoSession },
+    );
+
+    // Update ProgramFund balance if payment is confirmed/paid
+    if (payment_status === DONATION_PAYMENT_STATUS.PAID) {
+      if (type === 'donation') {
+        await ProgramFund.updateOne(
+          {},
+          {
+            $inc: { amount: amount },
+          },
+          { session: mongoSession },
+        );
+      } else if (type === 'grant') {
+        await ProgramFund.updateOne(
+          {},
+          {
+            $inc: { amount: -amount },
+          },
+          { session: mongoSession },
+        );
+      }
+    }
+
+    // Match donor to existing User if email exists
+    const userDoc = email
+      ? await User.findOne({ email }).session(mongoSession)
+      : null;
+
+    // Create financial transaction record for audit and dashboard financial tracking
+    await Transaction.create(
+      [
+        {
+          user: userDoc?._id || new Types.ObjectId(user.id),
+          total_price: amount,
+          amount,
+          payment_received:
+            payment_status === DONATION_PAYMENT_STATUS.PAID ? amount : 0,
+          type:
+            type === 'grant' ? TRANSACTION_TYPE.DEBIT : TRANSACTION_TYPE.CREDIT,
+          category: TRANSACTION_CATEGORY.DONATION,
+          status:
+            payment_status === DONATION_PAYMENT_STATUS.PAID
+              ? TRANSACTION_STATUS.SUCCESS
+              : TRANSACTION_STATUS.PENDING,
+          payment_method: payment_method || 'cash',
+          payment_intent_id: transactionId,
+          transaction_id: transactionId,
+        },
+      ],
+      { session: mongoSession },
+    );
+
+    await mongoSession.commitTransaction();
+    mongoSession.endSession();
+
+    // Populate recordedBy for response
+    await donation.populate({
+      path: 'recordedBy',
+      select: 'name email role avatar',
+    });
+
+    // Notify other admins about the recorded donation
+    NotificationServices.sendNotificationToAdmins({
+      title: 'Manual Donation Recorded',
+      message: `${name} contributed $${amount} via ${payment_method} (recorded by admin)`,
+      refId: donation._id,
+      path: '/transactions',
+    }).catch(err => console.error('[Notification Error]:', err));
+
+    // Send receipt email to donor if email is present
+    if (email && payment_status === DONATION_PAYMENT_STATUS.PAID) {
+      try {
+        const emailData = emailTemplate.donationReceipt({
+          donorEmail: email,
+          donorName: name || 'Valued Donor',
+          amount,
+          transactionId,
+        });
+        await emailHelper.sendEmail(emailData);
+      } catch (emailError) {
+        console.error('[Manual Donation Receipt Email Error]:', emailError);
+      }
+    }
+
+    return donation;
+  } catch (error) {
+    await mongoSession.abortTransaction();
+    mongoSession.endSession();
+    throw error;
+  }
 };
 
 const getAllDonationsFromDB = async (
@@ -54,17 +208,22 @@ const getAllDonationsFromDB = async (
     : { email: user.email, payment_status: 'paid' };
 
   const qb = new QueryBuilder(
-    Donation.find(initQuery).populate({
-      path: 'applicant',
-      select: 'personal applicationPeriod awardedAmount status projectTitle',
-      populate: {
-        path: 'applicationPeriod',
-        select: 'title startDate endDate',
-      },
-    }),
+    Donation.find(initQuery)
+      .populate({
+        path: 'applicant',
+        select: 'personal applicationPeriod awardedAmount status projectTitle',
+        populate: {
+          path: 'applicationPeriod',
+          select: 'title startDate endDate',
+        },
+      })
+      .populate({
+        path: 'recordedBy',
+        select: 'name email role avatar',
+      }),
     query,
   )
-    .search(['name', 'email', 'transactionId'])
+    .search(['name', 'email', 'transactionId', 'reference'])
     .filter()
     .sort()
     .paginate()
@@ -83,15 +242,20 @@ const getSingleDonationFromDB = async (id: string) => {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Invalid donation ID');
   }
 
-  const donation = await Donation.findById(id).populate({
-    path: 'applicant',
-    select:
-      'personal applicationPeriod awardedAmount status projectTitle quote successStory',
-    populate: {
-      path: 'applicationPeriod',
-      select: 'title startDate endDate',
-    },
-  });
+  const donation = await Donation.findById(id)
+    .populate({
+      path: 'applicant',
+      select:
+        'personal applicationPeriod awardedAmount status projectTitle quote successStory',
+      populate: {
+        path: 'applicationPeriod',
+        select: 'title startDate endDate',
+      },
+    })
+    .populate({
+      path: 'recordedBy',
+      select: 'name email role avatar',
+    });
 
   if (!donation) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Donation transaction not found');
@@ -110,21 +274,26 @@ const deleteDonationFromDB = async (id: string) => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Donation record not found');
   }
 
-  // Adjust ProgramFund balance to stay consistent
-  if (donation.type === 'donation') {
-    await ProgramFund.updateOne(
-      {},
-      {
-        $inc: { amount: -donation.amount },
-      },
-    );
-  } else if (donation.type === 'grant') {
-    await ProgramFund.updateOne(
-      {},
-      {
-        $inc: { amount: donation.amount },
-      },
-    );
+  // Adjust ProgramFund balance to stay consistent if paid
+  const isPaid =
+    donation.payment_status === DONATION_PAYMENT_STATUS.PAID ||
+    (donation.payment_status as string) === 'paid';
+  if (isPaid) {
+    if (donation.type === 'donation') {
+      await ProgramFund.updateOne(
+        {},
+        {
+          $inc: { amount: -donation.amount },
+        },
+      );
+    } else if (donation.type === 'grant') {
+      await ProgramFund.updateOne(
+        {},
+        {
+          $inc: { amount: donation.amount },
+        },
+      );
+    }
   }
 
   const result = await Donation.findByIdAndDelete(id);
@@ -150,10 +319,15 @@ const deleteMultipleDonationsFromDB = async (ids: string[]) => {
 
   let netFundAdjustment = 0;
   for (const d of donations) {
-    if (d.type === 'donation') {
-      netFundAdjustment -= d.amount;
-    } else if (d.type === 'grant') {
-      netFundAdjustment += d.amount;
+    const isPaid =
+      d.payment_status === DONATION_PAYMENT_STATUS.PAID ||
+      (d.payment_status as string) === 'paid';
+    if (isPaid) {
+      if (d.type === 'donation') {
+        netFundAdjustment -= d.amount;
+      } else if (d.type === 'grant') {
+        netFundAdjustment += d.amount;
+      }
     }
   }
 
@@ -184,6 +358,13 @@ const updateStatusToDB = async (status: string, res: any) => {
 const getFundStatsFromDB = async () => {
   const [stats, currentFund] = await Promise.all([
     Donation.aggregate([
+      {
+        $match: {
+          payment_status: {
+            $in: [DONATION_PAYMENT_STATUS.PAID, 'paid'],
+          },
+        },
+      },
       {
         $group: {
           _id: null,
@@ -233,6 +414,7 @@ const getFundStatsFromDB = async () => {
 
 export const DonationServices = {
   createDonationToDB,
+  createManualDonationToDB,
   getAllDonationsFromDB,
   getSingleDonationFromDB,
   deleteDonationFromDB,

@@ -12,3 +12,9 @@ export enum DONATION_PAYMENT_METHOD {
   DIRECT = 'direct',
   OTHER = 'other',
 }
+
+export enum DONATION_TYPE {
+  DONATION = 'donation',
+  GRANT = 'grant',
+  FUND_RAISING = 'fund_raising',
+}

@@ -15,6 +15,13 @@ router
   )
   .get(auth(), DonationController.getAllDonations);
 
+router.post(
+  '/manual',
+  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
+  validateRequest(DonationValidations.createManualDonationSchema),
+  DonationController.createManualDonation,
+);
+
 router.get(
   '/fund-stats',
   auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
