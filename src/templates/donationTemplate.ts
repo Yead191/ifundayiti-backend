@@ -2,7 +2,7 @@ import config from '../config';
 import { IDonationReceipt, IDonationReceived } from '../types/emailTamplate';
 
 const getLogoUrl = () => {
-  return 'https://res.cloudinary.com/dknmebeee/image/upload/v1787648884/ifundayiti-logo_pxyeoe.png';
+  return 'https://res.cloudinary.com/dknmebeee/image/upload/v1789453331/logo-ifundayiti-nav_ea5qml.png';
 };
 
 export const donationReceipt = (values: IDonationReceipt) => {
@@ -18,15 +18,15 @@ export const donationReceipt = (values: IDonationReceipt) => {
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
           <tr>
-            <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
+            <td align="center" style="background-color: #F5F7FA; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; max-width: 190px; width: 100%; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->
           <tr>
             <td style="padding: 40px 40px 30px 40px;">
               <h1 style="color: #0033A0; font-size: 22px; font-weight: 700; margin: 0 0 20px 0; text-align: center;">
-                Thank You for Your Donation! 🙏
+                Thank You for Your Donation! 
               </h1>
               <p style="font-size: 16px; line-height: 1.6; color: #4b5563; margin: 0 0 20px 0;">
                 Dear <strong>${values.donorName}</strong>,
@@ -36,7 +36,7 @@ export const donationReceipt = (values: IDonationReceipt) => {
               </p>
               
               <!-- Donation Details Box -->
-              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #0033A0; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
+              <div style="background-color: #f8faff; border: 1px solid #dce8ff; border-left: 4px solid #E4002B; border-radius: 8px; padding: 24px; margin-bottom: 24px;">
                 <h3 style="margin-top: 0; color: #0033A0; border-bottom: 1px solid #dce8ff; padding-bottom: 8px;">Donation Receipt</h3>
                 <table width="100%" border="0" cellspacing="0" cellpadding="8" style="font-size: 15px; color: #4b5563;">
                   <tr>
@@ -107,9 +107,9 @@ export const donationReceived = (values: IDonationReceived) => {
       <td align="center">
         <table width="100%" max-width="600" border="0" cellspacing="0" cellpadding="0" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 6px 30px rgba(0,51,160,0.10); margin: 30px auto;">
           <!-- Header/Logo Section -->
-          <tr>
-            <td align="center" style="background-color: #EDE0CB; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
-              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; width: 100px; height: auto; margin: 0 auto;" />
+         <tr>
+            <td align="center" style="background-color: #F5F7FA; padding: 36px 20px 28px 20px; border-bottom: 4px solid #E4002B;">
+              <img src="${logoUrl}" alt="IFundAyiti Logo" style="display: block; max-width: 190px; width: 100%; height: auto; margin: 0 auto;" />
             </td>
           </tr>
           <!-- Body Content -->

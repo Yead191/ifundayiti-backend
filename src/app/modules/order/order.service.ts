@@ -643,7 +643,20 @@ const getOrderStatsFromDB = async (user?: JwtPayload) => {
       $group: {
         _id: null,
         // 1. Order Status Counts
-        totalOrders: { $sum: 1 },
+        totalOrders: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  { $eq: ['$payment_status', PAYMENT_STATUS.PAID] },
+                  { $ne: ['$status', ORDER_STATUS.CANCELLED] },
+                ],
+              },
+              1,
+              0,
+            ],
+          },
+        }, //only paid orders
         pendingOrders: {
           $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.PENDING] }, 1, 0] },
         },
@@ -651,7 +664,9 @@ const getOrderStatsFromDB = async (user?: JwtPayload) => {
           $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.CONFIRMED] }, 1, 0] },
         },
         processingOrders: {
-          $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.PROCESSING] }, 1, 0] },
+          $sum: {
+            $cond: [{ $eq: ['$status', ORDER_STATUS.PROCESSING] }, 1, 0],
+          },
         },
         shippedOrders: {
           $sum: { $cond: [{ $eq: ['$status', ORDER_STATUS.SHIPPED] }, 1, 0] },
@@ -681,7 +696,11 @@ const getOrderStatsFromDB = async (user?: JwtPayload) => {
         },
         refundedOrders: {
           $sum: {
-            $cond: [{ $eq: ['$payment_status', PAYMENT_STATUS.REFUNDED] }, 1, 0],
+            $cond: [
+              { $eq: ['$payment_status', PAYMENT_STATUS.REFUNDED] },
+              1,
+              0,
+            ],
           },
         },
 

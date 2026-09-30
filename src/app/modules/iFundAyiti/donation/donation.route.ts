@@ -4,6 +4,7 @@ import auth from '../../../middlewares/auth';
 import { USER_ROLES } from '../../../../enums/user';
 import validateRequest from '../../../middlewares/validateRequest';
 import { DonationValidations } from './donation.validation';
+import tempAuth from '../../../middlewares/tempAuth';
 
 const router = express.Router();
 
@@ -22,11 +23,7 @@ router.post(
   DonationController.createManualDonation,
 );
 
-router.get(
-  '/fund-stats',
-  auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN),
-  DonationController.getFundStats,
-);
+router.get('/fund-stats', tempAuth(), DonationController.getFundStats);
 
 router.delete(
   '/delete-multiple',

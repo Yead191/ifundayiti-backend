@@ -26,6 +26,7 @@ import { NotificationServices } from '../../notification/notification.service';
 import { emailTemplate } from '../../../../shared/emailTemplate';
 import { emailHelper } from '../../../../helpers/emailHelper';
 import { OrderServices } from '../../order/order.service';
+import { Application } from '../application/application.model';
 
 const createDonationToDB = async (payload: IDonation) => {
   const { name, email, amount } = payload;
@@ -379,7 +380,7 @@ const updateStatusToDB = async (status: string, res: any) => {
 };
 
 const getFundStatsFromDB = async () => {
-  const [stats, orderStats] = await Promise.all([
+  const [stats, orderStats, ApplicationCount] = await Promise.all([
     Donation.aggregate([
       {
         $match: {
@@ -435,6 +436,7 @@ const getFundStatsFromDB = async () => {
       },
     ]),
     OrderServices.getOrderStatsFromDB(),
+    Application.countDocuments(),
   ]);
 
   const totalDonations = stats[0]?.totalDonations || 0;
@@ -454,6 +456,8 @@ const getFundStatsFromDB = async () => {
   const totalInflows = totalDonations + totalFundRaised;
   const totalBalance = totalInflows - totalGrants;
 
+  const totalApplication = ApplicationCount || 0;
+
   return {
     totalBalance,
     totalDonations,
@@ -463,6 +467,7 @@ const getFundStatsFromDB = async () => {
     grantCount,
     fundRaisedCount,
     totalCount,
+    totalApplication,
   };
 };
 
