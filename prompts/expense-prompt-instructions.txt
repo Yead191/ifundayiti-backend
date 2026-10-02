@@ -1,0 +1,462 @@
+================================================================================
+PREMIUM IMPLEMENTATION PROMPT & SPECIFICATION: EXPENSE MANAGEMENT SYSTEM
+(FOR ADMIN DASHBOARD)
+================================================================================
+
+Target Application:
+  - Admin Dashboard: `/expenses` 
+Base API URLs:
+  - Base URL: `http://localhost:5000/api/v1` (or production base URL)
+  - Expense Endpoints: `/expense`
+
+================================================================================
+EXECUTIVE SUMMARY: ARCHITECTURE & SENIOR DEVELOPER ENHANCEMENTS
+================================================================================
+1. **Automated Platform Fund Synchronization**:
+   - Marking an expense as `paid` automatically deducts the amount from `ProgramFund` balance.
+   - Updating an expense's amount or toggling status (`paid` <-> `unpaid`/`cancelled`) automatically calculates the financial delta and adjusts `ProgramFund` in an atomic MongoDB transaction.
+   - Deleting a single or batch of paid expenses automatically restores the funds into `ProgramFund`.
+2. **Unified Financial Ledger (Transaction Sync)**:
+   - Creating an expense automatically logs a financial `Transaction` with `category: 'Expense'`, `type: 'Debit'`, and matching status (`Success` or `Pending`).
+   - Editing an expense updates the linked transaction record in lockstep.
+3. **Automated Reference Generation**:
+   - If no invoice or reference number is provided, the backend auto-generates a clean code chip (e.g., `EXP-XXXX`).
+4. **Instant Aggregated Stats (`GET /expense/stats`)**:
+   - Provides single-pass aggregated analytics: total volume, paid total, pending/unpaid total, cancelled total, category breakdown (`business`, `event`, `program`, `other`), and month-to-date metrics.
+5. **Cross-Module Fund Integration**:
+   - `GET /donation/fund-stats` includes `totalPaidExpenses` and `paidExpenseCount`, subtracting all paid operational expenses from the platform's `totalBalance`:
+     `totalBalance = (totalDonations + totalFundRaised) - (totalGrants + totalPaidExpenses)`.
+6. **Robust Route Hierarchy & Security**:
+   - Protected with `auth(USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN)`.
+   - Explicit routes (`/stats`, `/delete-multiple`) prioritized ahead of parameterized routes (`/:id`) to prevent routing collisions.
+
+================================================================================
+PART 1: COPY-PASTE PROMPT FOR FRONTEND DASHBOARD
+================================================================================
+```markdown
+### TASK: Build Premium Financial Expense Management Page in Admin Dashboard
+
+Implement a high-end, financial-grade Expense Management page in the Admin Dashboard (`/admin/expenses`).
+
+---
+
+#### 1. TOP METRIC STATS CARDS
+Fetch metrics from `GET /expense/stats` and display 5 glassmorphism stat widgets:
+1. **Total Operational Expenses**:
+   - Value: `$${totalAmount}` (formatted currency: `$XX,XXX.XX`).
+   - Subtitle: `${totalExpenses} total logged expenses`.
+   - Icon: `AccountBookOutlined` (Indigo/Slate theme).
+2. **Paid Outflows (Fund Deductions)**:
+   - Value: `$${totalPaidAmount}`.
+   - Subtitle: `${paidCount} settled payments deducted from fund`.
+   - Icon: `CheckCircleOutlined` (Emerald/Green theme).
+3. **Pending / Unpaid Expenses**:
+   - Value: `$${totalUnpaidAmount}`.
+   - Subtitle: `${unpaidCount} bills awaiting payment`.
+   - Icon: `ClockCircleOutlined` (Amber/Orange theme).
+4. **This Month's Spending**:
+   - Value: `$${thisMonthPaidAmount}`.
+   - Subtitle: `MTD paid operational spend`.
+   - Icon: `CalendarOutlined` (Cyan/Sky theme).
+5. **Category Spending Progress / Breakdown**:
+   - Mini progress bars or tags:
+     - Business: `$${byCategory.business}`
+     - Event: `$${byCategory.event}`
+     - Program: `$${byCategory.program}`
+     - Other: `$${byCategory.other}`
+
+---
+
+#### 2. TOOLBAR & ADVANCED FILTER CONTROLS
+- **Header Actions**:
+  - `Record Expense` primary button (opens creation modal).
+  - `Export CSV` button.
+  - `Refresh` button.
+- **Filter Bar**:
+  - **Search Input**: Debounced search by title, reference #, or internal notes (`?searchTerm=`).
+  - **Payment Status Tabs**:
+    - `All Statuses`
+    - `Paid` (`?payment_status=paid`)
+    - `Unpaid / Pending` (`?payment_status=unpaid`)
+    - `Cancelled` (`?payment_status=cancelled`)
+  - **Category Select**: Dropdown (`business`, `event`, `program`, `other`).
+  - **Subcategory Select**: Filter by specific subcategories (`phone_bill`, `rental`, `food`, etc.).
+  - **Date Range Picker**: Filter between dates (`?startDate=&endDate=`).
+  - **Batch Delete**: Enabled when 1 or more table rows are selected. Shows `Delete Selected (${count})` with a confirmation modal calling `DELETE /expense/delete-multiple`.
+
+---
+
+#### 3. DATA TABLE COLUMNS
+1. **Reference / Voucher #**:
+   - Monospace chip (e.g. `EXP-A1B2` or `INV-2026-09`).
+   - Click-to-copy button on hover.
+2. **Title & Subcategory**:
+   - Primary line: Bold title (e.g., "Main Office High-Speed Internet").
+   - Secondary line: Muted subcategory chip (e.g. `utilities`, `software`, `rental`).
+3. **Category**:
+   - Tag styled according to category:
+     - `Business`: Cyan tag with building icon.
+     - `Event`: Purple tag with calendar icon.
+     - `Program`: Emerald tag with project icon.
+     - `Other`: Slate tag.
+4. **Amount**:
+   - Bold styled currency (`-$120.00` in rose/red for paid outflows, amber for unpaid).
+5. **Payment Status**:
+   - Interactive status pill:
+     - `Paid`: Green pill (`CheckOutlined`).
+     - `Unpaid`: Amber pill (`ClockCircleOutlined`).
+     - `Cancelled`: Gray/Red pill (`CloseOutlined`).
+   - Clicking allows quick status update via `PATCH /expense/:id/status` with confirmation.
+6. **Payment Method**:
+   - Clean tag showing method: `Cash`, `Bank Transfer`, `Card`, `Direct Wire`, or `Other`.
+7. **Expense Date**:
+   - Formatted date (e.g., "Oct 02, 2026").
+8. **Recorded By**:
+   - Admin avatar + name tag (from populated `recordedBy`).
+9. **Actions**:
+   - **View Voucher**: Opens slide-out Detail Drawer (`GET /expense/:id`).
+   - **Edit Expense**: Opens Edit Modal (`PATCH /expense/:id`).
+   - **Delete**: Warning modal:
+     *"Are you sure you want to delete this expense? If marked as paid, the amount will be automatically restored to the Program Fund balance."*
+     Calls `DELETE /expense/:id`.
+
+---
+
+#### 4. RECORD / EDIT EXPENSE MODAL
+Form Fields:
+- **Title**: text input (required).
+- **Amount ($ USD)**: number input (required, > 0).
+- **Category**: Select dropdown (`business`, `event`, `program`, `other`) (required).
+- **Subcategory**: Dynamic select dropdown (filtered based on chosen Category):
+  - *Business*: `office_supplies`, `phone_bill`, `business_cards`, `software`, `marketing`, `utilities`, `other`.
+  - *Event*: `event_expense`, `rental`, `food`, `transportation`, `other`.
+  - *Program*: `food`, `transportation`, `rental`, `other`.
+  - *Other*: `other`.
+- **Payment Status**: Radio group / Segmented pill:
+  - `Paid` (Default; immediately deducts from available fund).
+  - `Unpaid` (Pending invoice / obligation).
+- **Payment Method**: Select dropdown (`cash`, `bank_transfer`, `card`, `direct`, `other`).
+- **Expense Date**: DatePicker (required).
+- **Reference / Invoice #**: text input (optional; auto-generated if left empty).
+- **Notes / Description**: textarea (optional).
+
+On Submit:
+- If creating: `POST /expense`.
+- If editing: `PATCH /expense/:id`.
+
+---
+
+#### 5. EXPENSE DETAIL & AUDIT DRAWER (`GET /expense/:id`)
+- Slide-out side drawer:
+  - Voucher header with Status Badge, Reference #, and large Amount.
+  - Category & Subcategory tags.
+  - Expense Date & Recorded Date timestamps.
+  - Payment details: Method, status, and linked platform transaction ID.
+  - Recorded By: Admin Profile, email, and role.
+  - Notes & Audit remarks.
+  - Buttons: "Print Voucher / Receipt", "Edit", "Delete".
+```
+
+================================================================================
+PART 2: BACKEND API CHEAT SHEET & DATA CONTRACTS
+================================================================================
+
+BASE URL:
+  - `http://localhost:5000/api/v1`
+  - `/expense`
+
+HEADERS (Required for all routes):
+  - `Authorization: Bearer <ADMIN_OR_SUPER_ADMIN_TOKEN>`
+  - `Content-Type: application/json`
+
+--------------------------------------------------------------------------------
+1. GET EXPENSE STATISTICS
+--------------------------------------------------------------------------------
+- Method: `GET /expense/stats`
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Expense stats fetched successfully",
+    "data": {
+      "totalExpenses": 18,
+      "totalAmount": 4250.00,
+      "totalPaidAmount": 3800.00,
+      "paidCount": 16,
+      "totalUnpaidAmount": 450.00,
+      "unpaidCount": 2,
+      "totalCancelledAmount": 0,
+      "cancelledCount": 0,
+      "byCategory": {
+        "business": 1850.00,
+        "event": 1400.00,
+        "program": 800.00,
+        "other": 200.00
+      },
+      "thisMonthAmount": 1250.00,
+      "thisMonthPaidAmount": 1250.00
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+2. GET ALL EXPENSES (WITH PAGINATION, SEARCH & FILTERS)
+--------------------------------------------------------------------------------
+- Method: `GET /expense`
+- Access: ADMIN, SUPER_ADMIN
+- Query Parameters:
+  - `page`: number (default: 1)
+  - `limit`: number (default: 10)
+  - `searchTerm`: string (searches `title`, `reference`, `notes`)
+  - `category`: "business" | "event" | "program" | "other"
+  - `subcategory`: string (e.g. "phone_bill", "rental", "utilities")
+  - `payment_status`: "paid" | "unpaid" | "cancelled"
+  - `payment_method`: "cash" | "bank_transfer" | "card" | "direct" | "other"
+  - `sort`: string (default: "-expenseDate")
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Expenses fetched successfully",
+    "pagination": { "page": 1, "limit": 10, "total": 18, "totalPage": 2 },
+    "data": [
+      {
+        "_id": "67ee1a2b3c4d5e6f7a8b9c01",
+        "title": "Office High-Speed Internet Subscription",
+        "amount": 120.00,
+        "category": "business",
+        "subcategory": "utilities",
+        "payment_status": "paid",
+        "payment_method": "card",
+        "expenseDate": "2026-10-01T00:00:00.000Z",
+        "reference": "EXP-NET-1001",
+        "notes": "Monthly fiber internet for Cap-Haïtien community hub.",
+        "recordedBy": {
+          "_id": "67cb1a2b3c4d5e6f7a8b9c00",
+          "name": "Super Admin",
+          "email": "admin@ifundayiti.org",
+          "role": "super_admin",
+          "image": "https://..."
+        },
+        "createdAt": "2026-10-01T10:15:00.000Z",
+        "updatedAt": "2026-10-01T10:15:00.000Z"
+      }
+    ]
+  }
+  ```
+
+--------------------------------------------------------------------------------
+3. GET SINGLE EXPENSE DETAILS
+--------------------------------------------------------------------------------
+- Method: `GET /expense/:id`
+- Access: ADMIN, SUPER_ADMIN
+- Response (200 OK): Returns populated expense object with `recordedBy`.
+
+--------------------------------------------------------------------------------
+4. RECORD NEW EXPENSE
+--------------------------------------------------------------------------------
+- Method: `POST /expense`
+- Access: ADMIN, SUPER_ADMIN
+- Request Body:
+  ```json
+  {
+    "title": "Venue Sound System Rental",
+    "amount": 350.00,
+    "category": "event",
+    "subcategory": "rental",
+    "payment_status": "paid",
+    "payment_method": "cash",
+    "expenseDate": "2026-10-02T00:00:00.000Z",
+    "reference": "RENT-SND-09",
+    "notes": "Paid cash to sound engineer for gala presentation."
+  }
+  ```
+- Behavior:
+  - Auto-assigns `recordedBy: admin.id`.
+  - Auto-generates `reference` (`EXP-XXXX`) if not supplied.
+  - If `payment_status: "paid"`, immediately deducts `$amount` from `ProgramFund`.
+  - Creates a platform `Transaction` audit ledger entry.
+- Response (201 Created):
+  ```json
+  {
+    "statusCode": 201,
+    "success": true,
+    "message": "Expense recorded successfully",
+    "data": {
+      "_id": "67ee2b3c4d5e6f7a8b9c02",
+      "title": "Venue Sound System Rental",
+      "amount": 350.00,
+      "category": "event",
+      "subcategory": "rental",
+      "payment_status": "paid",
+      "payment_method": "cash",
+      "expenseDate": "2026-10-02T00:00:00.000Z",
+      "reference": "RENT-SND-09",
+      "recordedBy": {
+        "_id": "67cb1a...",
+        "name": "Super Admin",
+        "email": "admin@ifundayiti.org"
+      }
+    }
+  }
+  ```
+
+--------------------------------------------------------------------------------
+5. UPDATE EXPENSE (FULL EDIT)
+--------------------------------------------------------------------------------
+- Method: `PATCH /expense/:id`
+- Access: ADMIN, SUPER_ADMIN
+- Request Body (all fields optional):
+  ```json
+  {
+    "title": "Venue Sound System Rental & Microphones",
+    "amount": 400.00,
+    "notes": "Added 2 wireless microphones to rental."
+  }
+  ```
+- Behavior:
+  - If amount or payment status changes, automatically recalculates and adjusts `ProgramFund` delta.
+  - Synchronizes linked ledger `Transaction`.
+- Response (200 OK): Returns updated expense object.
+
+--------------------------------------------------------------------------------
+6. QUICK STATUS TOGGLE
+--------------------------------------------------------------------------------
+- Method: `PATCH /expense/:id/status` (or `PATCH /expense/:id`)
+- Access: ADMIN, SUPER_ADMIN
+- Request Body:
+  ```json
+  {
+    "payment_status": "paid"
+  }
+  ```
+- Response (200 OK): Returns updated expense object.
+
+--------------------------------------------------------------------------------
+7. DELETE SINGLE EXPENSE
+--------------------------------------------------------------------------------
+- Method: `DELETE /expense/:id`
+- Access: ADMIN, SUPER_ADMIN
+- Behavior:
+  - If the expense was marked `paid`, the `$amount` is automatically restored back to `ProgramFund`.
+  - Removes linked transaction entry.
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Expense deleted successfully",
+    "data": null
+  }
+  ```
+
+--------------------------------------------------------------------------------
+8. BATCH DELETE MULTIPLE EXPENSES
+--------------------------------------------------------------------------------
+- Method: `DELETE /expense/delete-multiple`
+- Access: ADMIN, SUPER_ADMIN
+- Request Body:
+  ```json
+  {
+    "ids": ["67ee1a2b3c4d5e6f7a8b9c01", "67ee2b3c4d5e6f7a8b9c02"]
+  }
+  ```
+- Behavior:
+  - Calculates total paid amount among deleted items and restores it to `ProgramFund`.
+- Response (200 OK):
+  ```json
+  {
+    "statusCode": 200,
+    "success": true,
+    "message": "Expenses deleted successfully",
+    "data": {
+      "deletedCount": 2
+    }
+  }
+  ```
+
+================================================================================
+PART 3: TYPESCRIPT DATA MODELS & ENUMS
+================================================================================
+
+```typescript
+export enum EXPENSE_PAYMENT_STATUS {
+  PAID = 'paid',
+  UNPAID = 'unpaid',
+  CANCELLED = 'cancelled',
+}
+
+export enum EXPENSE_PAYMENT_METHOD {
+  CASH = 'cash',
+  BANK_TRANSFER = 'bank_transfer',
+  CARD = 'card',
+  DIRECT = 'direct',
+  OTHER = 'other',
+}
+
+export enum EXPENSE_CATEGORY {
+  BUSINESS = 'business',
+  EVENT = 'event',
+  PROGRAM = 'program',
+  OTHER = 'other',
+}
+
+export enum EXPENSE_SUBCATEGORY {
+  PHONE_BILL = 'phone_bill',
+  BUSINESS_CARDS = 'business_cards',
+  RENTAL = 'rental',
+  FOOD = 'food',
+  EVENT_EXPENSE = 'event_expense',
+  UTILITIES = 'utilities',
+  OFFICE_SUPPLIES = 'office_supplies',
+  MARKETING = 'marketing',
+  TRANSPORTATION = 'transportation',
+  SOFTWARE = 'software',
+  OTHER = 'other',
+}
+
+export interface IExpense {
+  _id: string;
+  title: string;
+  amount: number;
+  category: EXPENSE_CATEGORY;
+  subcategory: EXPENSE_SUBCATEGORY;
+  payment_status: EXPENSE_PAYMENT_STATUS;
+  payment_method: EXPENSE_PAYMENT_METHOD;
+  expenseDate: string; // ISO date string
+  reference?: string;
+  notes?: string;
+  recordedBy: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+    image?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IExpenseStats {
+  totalExpenses: number;
+  totalAmount: number;
+  totalPaidAmount: number;
+  paidCount: number;
+  totalUnpaidAmount: number;
+  unpaidCount: number;
+  totalCancelledAmount: number;
+  cancelledCount: number;
+  byCategory: {
+    business: number;
+    event: number;
+    program: number;
+    other: number;
+  };
+  thisMonthAmount: number;
+  thisMonthPaidAmount: number;
+}
+```
+================================================================================

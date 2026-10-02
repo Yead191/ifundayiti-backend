@@ -15,4 +15,5 @@ export enum TRANSACTION_CATEGORY {
   SERVICE = 'Service',
   DONATION = 'Donation',
   EVENT = 'Event',
+  EXPENSE = 'Expense',
 }

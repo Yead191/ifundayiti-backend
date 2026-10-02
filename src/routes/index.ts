@@ -37,6 +37,7 @@ import { CommunityRoutes } from '../app/modules/community/community/community.ro
 import { CommunityLikeRoutes } from '../app/modules/community/communityLike/communityLike.route';
 import { CommunityCommentRoutes } from '../app/modules/community/communityComment/communityComment.route';
 import { CommentRoutes } from '../app/modules/blogs/comment/comment.route';
+import { ExpenseRoutes } from '../app/modules/expense/expense.route';
 const router = express.Router();
 
 const apiRoutes = [
@@ -233,6 +234,10 @@ const apiRoutes = [
   {
     path: '/community/comment',
     route: CommunityCommentRoutes,
+  },
+  {
+    path: '/expense',
+    route: ExpenseRoutes,
   },
 ];
 

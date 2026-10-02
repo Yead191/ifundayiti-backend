@@ -267,7 +267,7 @@ BASE URL:
   ```
 
 --------------------------------------------------------------------------------
-2. GET FUND STATISTICS (UNIFIED DONATIONS + STORE ORDERS)
+2. GET FUND STATISTICS (UNIFIED DONATIONS, STORE ORDERS & EXPENSES)
 --------------------------------------------------------------------------------
 - Method: GET /donation/fund-stats
 - Access: ADMIN, SUPER_ADMIN
@@ -277,23 +277,29 @@ BASE URL:
   - `donationCount`: Count of paid donation contributions.
   - `fundRaisedCount`: Count of manual fundraising entries + count of completed paid store orders (`paidOrders` from Order collection).
   - `totalGrants`: Total disbursed grants to winners.
-  - `totalBalance`: Net liquidity (`totalDonations + totalFundRaised - totalGrants`).
+  - `totalPaidExpenses`: Total operational expenses settled/paid (`payment_status === 'paid'`).
+  - `paidExpenseCount`: Count of paid operational expense vouchers.
+  - `totalBalance`: Net liquidity (`totalDonations + totalFundRaised - totalGrants - totalPaidExpenses`).
   - `totalCount`: `donationCount + grantCount + fundRaisedCount`.
+  - `totalApplication`: Total application count.
 - Response (200 OK):
   ```json
   {
     "statusCode": 200,
     "success": true,
     "message": "Fund stats fetched successfully",
-   "data": {
-        "totalBalance": 618.7,
-        "totalDonations": 93,
-        "totalGrants": 0,
-        "totalFundRaised": 525.7,
-        "donationCount": 6,
-        "grantCount": 0,
-        "fundRaisedCount": 10,
-        "totalCount": 16
+    "data": {
+      "totalBalance": 618.7,
+      "totalDonations": 93,
+      "totalGrants": 0,
+      "totalFundRaised": 525.7,
+      "totalPaidExpenses": 0,
+      "donationCount": 6,
+      "grantCount": 0,
+      "fundRaisedCount": 10,
+      "paidExpenseCount": 0,
+      "totalCount": 16,
+      "totalApplication": 3
     }
   }
   ```
@@ -474,10 +480,13 @@ export interface IFundStats {
   totalDonations: number;
   totalGrants: number;
   totalFundRaised: number; // Combines offline fundraising + paid store order revenues
+  totalPaidExpenses: number; // Sum of paid operational expenses
   donationCount: number;
   grantCount: number;
   fundRaisedCount: number; // Combines offline fundraising entries + completed paid store orders
+  paidExpenseCount: number; // Count of paid operational expenses
   totalCount: number;
+  totalApplication: number;
 }
 ```
 ================================================================================

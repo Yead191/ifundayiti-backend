@@ -27,6 +27,8 @@ import { emailTemplate } from '../../../../shared/emailTemplate';
 import { emailHelper } from '../../../../helpers/emailHelper';
 import { OrderServices } from '../../order/order.service';
 import { Application } from '../application/application.model';
+import { Expense } from '../../expense/expense.model';
+import { EXPENSE_PAYMENT_STATUS } from '../../expense/expense.constants';
 
 const createDonationToDB = async (payload: IDonation) => {
   const { name, email, amount } = payload;
@@ -380,7 +382,7 @@ const updateStatusToDB = async (status: string, res: any) => {
 };
 
 const getFundStatsFromDB = async () => {
-  const [stats, orderStats, ApplicationCount] = await Promise.all([
+  const [stats, orderStats, ApplicationCount, expenseStats] = await Promise.all([
     Donation.aggregate([
       {
         $match: {
@@ -437,6 +439,22 @@ const getFundStatsFromDB = async () => {
     ]),
     OrderServices.getOrderStatsFromDB(),
     Application.countDocuments(),
+    Expense.aggregate([
+      {
+        $match: {
+          payment_status: {
+            $in: [EXPENSE_PAYMENT_STATUS.PAID, 'paid'],
+          },
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          totalPaidExpenses: { $sum: '$amount' },
+          paidExpenseCount: { $sum: 1 },
+        },
+      },
+    ]),
   ]);
 
   const totalDonations = stats[0]?.totalDonations || 0;
@@ -444,6 +462,9 @@ const getFundStatsFromDB = async () => {
   const offlineFundRaised = stats[0]?.totalFundRaised || 0;
   const orderRevenue = orderStats?.totalRevenue || 0;
   const totalFundRaised = offlineFundRaised + orderRevenue;
+
+  const totalPaidExpenses = expenseStats[0]?.totalPaidExpenses || 0;
+  const paidExpenseCount = expenseStats[0]?.paidExpenseCount || 0;
 
   const donationCount = stats[0]?.donationCount || 0;
   const grantCount = stats[0]?.grantCount || 0;
@@ -454,7 +475,8 @@ const getFundStatsFromDB = async () => {
   const totalCount = donationCount + grantCount + fundRaisedCount;
 
   const totalInflows = totalDonations + totalFundRaised;
-  const totalBalance = totalInflows - totalGrants;
+  const totalOutflows = totalGrants + totalPaidExpenses;
+  const totalBalance = totalInflows - totalOutflows;
 
   const totalApplication = ApplicationCount || 0;
 
@@ -463,9 +485,11 @@ const getFundStatsFromDB = async () => {
     totalDonations,
     totalGrants,
     totalFundRaised,
+    totalPaidExpenses,
     donationCount,
     grantCount,
     fundRaisedCount,
+    paidExpenseCount,
     totalCount,
     totalApplication,
   };
