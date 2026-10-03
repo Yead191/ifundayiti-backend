@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "dev": "node api.js && ts-node-dev --respawn --transpile-only src/server.ts",
     "lint:check": "eslint --ignore-path .eslintignore --ext .js,.ts",
     "lint:fix": "lint . --fix",
     "prettier:check": "prettier --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
@@ -15,8 +15,8 @@
     "docker-infra": "docker-compose -f docker-compose.infra.yaml up --build -d",
     "create-module": "ts-node ./src/gm.ts",
     "init-load": "ts-node ./src/load-balancer.conf.ts",
-    "build": "tsc",
-    "start": "node dist/server.js"
+    "build": "node api.js && tsc",
+    "start": "node api.js && node dist/server.js"
   },
   "keywords": [],
   "author": "",
