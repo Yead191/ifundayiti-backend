@@ -30,7 +30,10 @@ const getSingleTransaction = catchAsync(async (req: Request, res: Response) => {
 });
 
 const getTransactionStats = catchAsync(async (req: Request, res: Response) => {
-  const result = await TransactionServices.getTransactionStatsFromDB();
+  const result = await TransactionServices.getTransactionStatsFromDB(
+    req.user,
+    req.query,
+  );
   return sendResponse(res, {
     statusCode: StatusCodes.OK,
     success: true,
