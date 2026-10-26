@@ -27,6 +27,11 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
       (metadata?.project === 'ifundayiti' &&
         (metadata?.amount || data?.amount_total));
 
+    const paymentTxnId =
+      (typeof data.payment_intent === 'string'
+        ? data.payment_intent
+        : data.payment_intent?.id) || data.id;
+
     if (isDonation) {
       const name =
         metadata?.name || data?.customer_details?.name || 'Anonymous Donor';
@@ -38,11 +43,6 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
       const amount =
         Number(metadata?.amount) ||
         (data?.amount_total ? data.amount_total / 100 : 0);
-
-      const paymentTxnId =
-        (typeof data.payment_intent === 'string'
-          ? data.payment_intent
-          : data.payment_intent?.id) || data.id;
 
       if (amount > 0) {
         const donations = await Donation.create(
@@ -119,7 +119,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
             donorEmail: email,
             donorName: name,
             amount: amount,
-            transactionId: data.id,
+            transactionId: paymentTxnId,
           });
           await emailHelper.sendEmail(emailData);
         } catch (emailError) {
@@ -139,7 +139,7 @@ export const handleDonationCheckout = async (data: Stripe.Checkout.Session) => {
               donorName: name,
               donorEmail: email,
               amount: amount,
-              transactionId: data.id,
+              transactionId: paymentTxnId,
             });
             await emailHelper.sendEmail(adminEmailData);
           }
