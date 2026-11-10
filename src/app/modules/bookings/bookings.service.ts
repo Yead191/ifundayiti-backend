@@ -52,6 +52,44 @@ const bookEventIntoDB = async (
     );
   }
 
+  // Validate event date (past events cannot be booked)
+  const now = new Date();
+  const rawEndDate = event.endDate ? new Date(event.endDate) : null;
+  const rawStartDate = event.startDate ? new Date(event.startDate) : null;
+
+  const eventEndDate =
+    rawEndDate && rawStartDate
+      ? new Date(Math.max(rawEndDate.getTime(), rawStartDate.getTime()))
+      : rawEndDate || rawStartDate || new Date();
+
+  // If time part was not specified (stored as midnight UTC), consider valid until the end of that day (UTC)
+  const isMidnightUtc =
+    eventEndDate.getUTCHours() === 0 &&
+    eventEndDate.getUTCMinutes() === 0 &&
+    eventEndDate.getUTCSeconds() === 0 &&
+    eventEndDate.getUTCMilliseconds() === 0;
+
+  const expirationDate = isMidnightUtc
+    ? new Date(
+        Date.UTC(
+          eventEndDate.getUTCFullYear(),
+          eventEndDate.getUTCMonth(),
+          eventEndDate.getUTCDate(),
+          23,
+          59,
+          59,
+          999,
+        ),
+      )
+    : eventEndDate;
+
+  if (expirationDate < now) {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Cannot book ticket for a past event.',
+    );
+  }
+
   // Validate maximum 5 seats limit per user for this event
   if (quantity > 5) {
     throw new ApiError(
