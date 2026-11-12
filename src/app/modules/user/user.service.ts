@@ -160,7 +160,10 @@ const getUserStatsFromDB = async () => {
     }),
     User.countDocuments({
       status: 'active',
-      role: { $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN] },
+      verified: true,
+      role: {
+        $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.VENDOR],
+      },
     }),
     User.countDocuments({
       status: 'blocked',
