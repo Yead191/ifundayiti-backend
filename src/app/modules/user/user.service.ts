@@ -109,7 +109,6 @@ const getAllUsersFromDB = async (query: Record<string, any>) => {
   // const userQuery = new QueryBuilder(User.find({ role: { $nin: [USER_ROLES.ADMIN, USER_ROLES.SUPER_ADMIN] }, verified: true }), query).paginate().sort().search(['name', 'email']).filter().fields()
   const filter: Record<string, any> = {
     role: USER_ROLES.USER,
-    verified: true,
   };
 
   if (query.hasSubscription === 'true') {
@@ -160,7 +159,6 @@ const getUserStatsFromDB = async () => {
     }),
     User.countDocuments({
       status: 'active',
-      verified: true,
       role: {
         $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN, USER_ROLES.VENDOR],
       },
@@ -175,11 +173,15 @@ const getUserStatsFromDB = async () => {
     }),
     User.countDocuments({
       verified: true,
-      role: { $ne: USER_ROLES.SUPER_ADMIN },
+      role: {
+        $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN],
+      },
     }),
     User.countDocuments({
       verified: false,
-      role: { $ne: USER_ROLES.SUPER_ADMIN },
+      role: {
+        $nin: [USER_ROLES.SUPER_ADMIN, USER_ROLES.ADMIN],
+      },
     }),
     User.aggregate([
       { $match: { role: { $ne: USER_ROLES.SUPER_ADMIN } } },
